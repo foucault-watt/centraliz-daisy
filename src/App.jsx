@@ -1,5 +1,6 @@
 import {
   Calendar1,
+  CalendarDays,
   Ellipsis,
   FileText,
   Mail,
@@ -8,6 +9,7 @@ import {
   Settings,
 } from "lucide-react";
 import React from "react";
+import BibliPage from "./pages/BibliPage.jsx";
 import {
   NavLink,
   Navigate,
@@ -31,15 +33,16 @@ const CalendarPage = () => (
 const MailPage = () => (
   <div className="p-6">
     <h1 className="text-2xl font-bold">Mails</h1>
-    <p className="mt-4">
+    <p className="mt-4 ">
       Gérez vos mails ici. Vous pouvez envoyer, recevoir et organiser vos mails
       facilement.
+      <CalendarDays />
     </p>
   </div>
 );
 
 const NotesPage = () => (
-  <div className="p-6">
+  <div className="p-6 bg-base-200">
     <h1 className="text-2xl font-bold">Notes</h1>
     <p className="mt-4">
       Prenez des notes ici. Vous pouvez créer, modifier et supprimer vos notes
@@ -69,6 +72,13 @@ const tabsData = [
     path: "/notes",
     icon: <FileText size={18} />,
     content: <NotesPage />,
+  },
+  {
+    id: "Bibli",
+    label: "Bibli",
+    path: "/bibli",
+    icon: <FileText size={18} />,
+    content: <BibliPage/>,
   },
 ];
 
