@@ -1,0 +1,20 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: light --default, cyberpunk;
+}
+
+.geist {
+  font-family: "Geist";
+}
+
+.preview {
+  box-shadow: 0 0 0 1px var(--color-base-300) inset;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--color-base-100),
+    var(--color-base-100) 13px,
+    var(--color-base-300) 13px,
+    var(--color-base-300) 14px
+  );
+  background-size: 40px 40px;
+}
