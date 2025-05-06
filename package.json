@@ -2,10 +2,9 @@
     "name": "project-root",
     "version": "1.0.0",
     "scripts": {
-      "go": "concurrently \"npm --prefix frontend run dev\" \"npm --prefix backend run dev\""
+        "go": "concurrently \"npm --prefix frontend run dev\" \"npm --prefix backend run dev\""
     },
     "devDependencies": {
-      "concurrently": "^8.0.1"
+        "concurrently": "^8.0.1"
     }
-  }
-  
+}
