@@ -17,7 +17,7 @@ import {
   BrowserRouter as Router,
   Routes,
 } from "react-router-dom";
-import Logo from "./assets/Logo";
+import Logo from "./assets/Logo.jsx";
 
 // Composants de page
 const CalendarPage = () => (
