@@ -1,15 +1,19 @@
-const { supabase } = require("./supabaseClient");
+import { v4 as uuidv4 } from "uuid";
+import supabase from "../model/supabase.js";
 
-async function syncUserWithSupabase(userId) {
+export async function syncUserWithSupabase(userName) {
+  // Cherche l'utilisateur par username
   const { data, error } = await supabase
-    .from("utilisateurs")
-    .select("id")
-    .eq("identifiant", userId)
+    .from("users")
+    .select("id, username")
+    .eq("username", userName)
     .single();
 
-  if (!data) {
-    await supabase.from("utilisateurs").insert({ identifiant: userId });
+  if (data) {
+    return data.id; // Retourne l'id existant
   }
+  // Sinon, crée l'utilisateur avec un nouvel id
+  const id = uuidv4();
+  await supabase.from("users").insert([{ id, username: userName }]);
+  return id;
 }
-
-module.exports = { syncUserWithSupabase };

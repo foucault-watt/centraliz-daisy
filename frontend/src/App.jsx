@@ -18,6 +18,7 @@ import {
   Routes,
 } from "react-router-dom";
 import Logo from "./assets/Logo.jsx";
+import AuthPage from "./pages/AuthPage.jsx";
 
 // Composants de page
 const CalendarPage = () => (
@@ -57,7 +58,7 @@ const tabsData = [
     label: "Calendriers",
     path: "/",
     icon: <Calendar1 size={18} />,
-    content: <CalendarPage />,
+    content: <AuthPage />,
   },
   {
     id: "mail",
@@ -128,7 +129,7 @@ function App() {
           <div class="flex-none">
             <input
               type="checkbox"
-              value="cyberpunk"
+              value="synthwave"
               className="toggle theme-controller ml-4"
             />
           </div>

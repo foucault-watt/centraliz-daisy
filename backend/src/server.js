@@ -9,6 +9,7 @@ import morgan from "morgan";
 
 import { authMiddleware } from "./middlewares/authMiddleware.js";
 import casAuthRoutes from "./routes/casAuth.js";
+import meRoutes from "./routes/me.js";
 import logger from "./utils/logger.js";
 // Charger .env
 dotenv.config();
@@ -25,6 +26,8 @@ app.use(cookieParser());
 
 // Routes
 app.use("/api/cas", casAuthRoutes);
+app.use("/api/me", meRoutes);
+
 
 // Route test protégée
 app.get("/api/whoami", authMiddleware, (req, res) => {
