@@ -19,28 +19,8 @@ import {
 } from "react-router-dom";
 import Logo from "./assets/Logo.jsx";
 import AuthPage from "./pages/AuthPage.jsx";
+import CalendarPage from "./pages/CalendarPage.jsx";
 
-// Composants de page
-const CalendarPage = () => (
-  <div className="p-6">
-    <h1 className="text-2xl font-bold">Calendries</h1>
-    <p className="mt-4">
-      Gérez vos calendriers ici. Vous pouvez ajouter, modifier ou supprimer des
-      événements.
-    </p>
-  </div>
-);
-
-const MailPage = () => (
-  <div className="p-6">
-    <h1 className="text-2xl font-bold">Mails</h1>
-    <p className="mt-4 ">
-      Gérez vos mails ici. Vous pouvez envoyer, recevoir et organiser vos mails
-      facilement.
-      <CalendarDays />
-    </p>
-  </div>
-);
 
 const NotesPage = () => (
   <div className="p-6 bg-base-200">
@@ -58,14 +38,14 @@ const tabsData = [
     label: "Calendriers",
     path: "/",
     icon: <Calendar1 size={18} />,
-    content: <AuthPage />,
+    content: <CalendarPage />,
   },
   {
     id: "mail",
     label: "Mails",
     path: "/mail",
     icon: <Mail size={18} />,
-    content: <MailPage />,
+    content: <AuthPage />,
   },
   {
     id: "notes",
