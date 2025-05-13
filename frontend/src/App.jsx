@@ -161,6 +161,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/*" element={<AppContent />} />
+        <Route path="/auth" element={<AuthPage />} />
       </Routes>
     </Router>
   );

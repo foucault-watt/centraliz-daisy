@@ -1,3 +1,4 @@
 export const getMe = (req, res) => {
-  res.json({ user: req.user });
+  const { userName, displayName } = req.user || {};
+  res.json({ user: { userName, displayName } });
 };
