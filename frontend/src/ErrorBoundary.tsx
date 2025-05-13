@@ -48,7 +48,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       // Sinon on utilise notre UI d'erreur par défaut avec daisyUI
       return (
         <div className="min-h-screen flex items-center justify-center bg-base-100">
-          <div className="card w-96 bg-base-200 shadow-xl">
+          <div className="card w-300 bg-base-200 shadow-xl">
             <div className="card-body">
               <h2 className="card-title text-error">Une erreur est survenue</h2>
               <div className="alert alert-error mb-4">

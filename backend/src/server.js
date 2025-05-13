@@ -1,4 +1,3 @@
-// server.js
 import compression from "compression";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -6,17 +5,14 @@ import * as dotenv from "dotenv";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
-
-import { authMiddleware } from "./middlewares/authMiddleware.js";
-import casAuthRoutes from "./routes/casAuth.js";
-import meRoutes from "./routes/me.js";
+import session from "express-session";
+import authRoutes from "./routes/authRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 import logger from "./utils/logger.js";
-// Charger .env
-dotenv.config();
 
+dotenv.config();
 const app = express();
 
-// Middlewares globaux
 app.use(cors({ origin: true, credentials: true }));
 app.use(helmet());
 app.use(morgan("dev"));
@@ -24,15 +20,19 @@ app.use(compression());
 app.use(express.json());
 app.use(cookieParser());
 
-// Routes
-app.use("/api/cas", casAuthRoutes);
-app.use("/api/me", meRoutes);
+app.use(session({
+  secret: process.env.SESSION_SECRET || "dev-secret",
+  resave: false,
+  saveUninitialized: true,
+  cookie: {
+    httpOnly: true,
+    secure: false, // true en prod avec HTTPS
+    sameSite: "lax"
+  }
+}));
 
-
-// Route test protégée
-app.get("/api/whoami", authMiddleware, (req, res) => {
-  res.json({ user: req.user });
-});
+app.use("/api/auth", authRoutes);
+app.use("/api", userRoutes);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

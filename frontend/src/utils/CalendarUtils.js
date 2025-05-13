@@ -32,15 +32,17 @@ export const getWorkWeek = (date) => {
 export const isToday = (date) => isSameDay(date, new Date());
 
 /**
- * Génère un tableau des heures de travail de 8h à 17h (pour des slots de 8h-9h, ..., 17h-18h).
+ * Génère un tableau des heures de travail.
  * @returns {Array<{hour: number, label: string}>} Un tableau d'objets avec l'heure et le label.
  */
 export const getWorkingHours = () => {
   // Crée un tableau [{hour: 8, label: "08:00"}, ..., {hour: 17, label: "17:00"}] pour 10 slots horaires
-  return Array.from({ length: 10 }, (_, i) => {
-    const hour = i + 8;
-    return { hour, label: `${hour.toString().padStart(2, "0")}:00` };
-  });
+  // La journée de travail va de 8h00 à 18h00 (le slot de 17h va jusqu'à 17h59)
+  const hoursArray = [];
+  for (let i = 8; i <= 17; i++) {
+    hoursArray.push({ hour: i, label: `${i.toString().padStart(2, "0")}:00` });
+  }
+  return hoursArray;
 };
 
 /**
@@ -66,88 +68,122 @@ export const formatWeekTitleString = (startDate, endDate) => {
  * @param {Date} referenceDate - La date de référence pour générer les événements autour de cette semaine.
  * @returns {Array<Object>} Un tableau d'événements.
  */
-export const generateSampleEvents = (referenceDate) => {
-  const monday = startOfWeek(referenceDate, { weekStartsOn: 1 });
-  return [
-    {
-      id: "1",
-      name: "Mathématiques",
-      type: "Cours magistral",
-      prof: "Mme Dupont",
-      room: "A101",
-      start: setMinutes(setHours(monday, 10), 0),
-      end: setMinutes(setHours(monday, 11), 30),
-      color: "primary",
-      description: "Chapitre 4 : Intégrales.",
-    },
-    {
-      id: "2",
-      name: "Physique",
-      type: "TP",
-      prof: "M. Martin",
-      room: "Lab 2",
-      start: setMinutes(setHours(addDays(monday, 1), 14), 0), // Mardi 14h00
-      end: setMinutes(setHours(addDays(monday, 1), 15), 0), // Mardi 15h00
-      color: "secondary",
-      description: "Optique expérimentale.",
-    },
-    {
-      id: "3",
-      name: "Anglais",
-      type: "Cours",
-      prof: "Mme Smith",
-      room: "B202",
-      start: setMinutes(setHours(addDays(monday, 2), 9), 30), // Mercredi 9h30
-      end: setMinutes(setHours(addDays(monday, 2), 10), 30), // Mercredi 10h30
-      color: "accent",
-      description: "Expression orale.",
-    },
-    {
-      id: "4",
-      name: "Histoire",
-      type: "TD",
-      prof: "M. Bernard",
-      room: "C303",
-      start: setMinutes(setHours(addDays(monday, 3), 12), 0), // Jeudi 12h00
-      end: setMinutes(setHours(addDays(monday, 3), 13), 30), // Jeudi 13h30
-      color: "info",
-      description: "Révolution française.",
-    },
-    {
-      id: "5",
-      name: "Informatique",
-      type: "Projet",
-      prof: "Mme Leroy",
-      room: "Salle info",
-      start: setMinutes(setHours(addDays(monday, 4), 16), 0), // Vendredi 16h00
-      end: setMinutes(setHours(addDays(monday, 4), 17), 30), // Vendredi 17h30
-      color: "success",
-      description: "Présentation du projet final.",
-    },
-    {
-      id: "6",
-      name: "Mathématiques",
-      type: "TD",
-      prof: "Mme Dupont",
-      room: "A101",
-      start: setMinutes(setHours(monday, 10), 15), // Lundi 10h15
-      end: setMinutes(setHours(monday, 10), 45), // Lundi 10h45
-      color: "warning",
-      description: "Exercices sur les intégrales.",
-    },
-    {
-      id: "7",
-      name: "Physique",
-      type: "Cours magistral",
-      prof: "M. Martin",
-      room: "Amphi 1",
-      start: setMinutes(setHours(addDays(monday, 1), 14), 30), // Mardi 14h30
-      end: setMinutes(setHours(addDays(monday, 1), 15), 30), // Mardi 15h30
-      color: "error",
-      description: "Mécanique quantique.",
-    },
-  ];
-};
+export function generateSampleEvents() {
+  // Définir la semaine du 12/05/2025
+  const baseDate = new Date(2025, 4, 12); // 12 mai 2025 (mois indexés à partir de 0)
+
+  // Créer un tableau pour stocker les événements
+  const events = [];
+
+  // Lundi 12/05/2025
+  events.push({
+    id: 1,
+    name: "Cours Mathématiques",
+    type: "Cours Magistral",
+    prof: "M. Dupont",
+    room: "A101",
+    color: "primary",
+    start: new Date(2025, 4, 12, 8, 30),
+    end: new Date(2025, 4, 12, 10, 30),
+  });
+
+  events.push({
+    id: 2,
+    name: "TD Informatique",
+    type: "TD",
+    prof: "Mme Martin",
+    room: "B203",
+    color: "accent",
+    start: new Date(2025, 4, 12, 14, 0),
+    end: new Date(2025, 4, 12, 16, 0),
+  });
+
+  // Mardi 13/05/2025
+  events.push({
+    id: 3,
+    name: "Projet Collaboratif",
+    type: "TP",
+    prof: "M. Bernard",
+    room: "Labo C",
+    color: "secondary",
+    start: new Date(2025, 4, 13, 9, 0),
+    end: new Date(2025, 4, 13, 12, 0),
+    description: "Préparation du rendu final",
+  });
+
+  // Mercredi 14/05/2025
+  events.push({
+    id: 4,
+    name: "Communication",
+    type: "Cours Magistral",
+    prof: "Mme Petit",
+    room: "Amphi A",
+    color: "info",
+    start: new Date(2025, 4, 14, 10, 0),
+    end: new Date(2025, 4, 14, 12, 0),
+  });
+
+  events.push({
+    id: 5,
+    name: "Anglais",
+    type: "TD",
+    prof: "M. Smith",
+    room: "D105",
+    color: "success",
+    start: new Date(2025, 4, 14, 13, 30),
+    end: new Date(2025, 4, 14, 15, 30),
+  });
+
+  // Jeudi 15/05/2025
+  events.push({
+    id: 6,
+    name: "Gestion de Projet",
+    type: "Cours Magistral",
+    prof: "Mme Dubois",
+    room: "Amphi B",
+    color: "warning",
+    start: new Date(2025, 4, 15, 8, 0),
+    end: new Date(2025, 4, 15, 11, 0),
+    description: "Examen en fin de séance",
+  });
+
+  // Vendredi 16/05/2025
+  events.push({
+    id: 7,
+    name: "Soutenance",
+    type: "Évaluation",
+    prof: "Jury",
+    room: "Salle des conseils",
+    color: "error",
+    start: new Date(2025, 4, 16, 14, 0),
+    end: new Date(2025, 4, 16, 15, 0),
+  });
+
+  events.push({
+    id: 8,
+    name: "Synthèse hebdomadaire",
+    type: "Réunion",
+    prof: "Équipe pédagogique",
+    room: "E001",
+    color: "neutral",
+    start: new Date(2025, 4, 16, 16, 0),
+    end: new Date(2025, 4, 16, 17, 30),
+  });
+
+  // Pour ajouter des événements qui se chevauchent
+  events.push({
+    id: 9,
+    name: "Tutorat",
+    type: "Accompagnement",
+    prof: "M. Robert",
+    room: "E202",
+    color: "secondary",
+    start: new Date(2025, 4, 13, 11, 0),
+    end: new Date(2025, 4, 13, 13, 0),
+  });
+
+  return events;
+}
 
 /**
  * Récupère les événements pour un jour spécifique.
@@ -185,4 +221,109 @@ export const getEventsForSlot = (events, day, hour) => {
 
     return eventStartsInSlot || eventEndsInSlot || eventSpansOverSlot;
   });
+};
+
+/**
+ * Calcule la disposition des événements pour un jour donné.
+ * @param {Array<Object>} dayEvents - Liste des événements pour le jour.
+ * @param {Object} gridSettings - Paramètres de la grille { firstHour, lastHour, pixelsPerHour }.
+ * @returns {Array<Object>} Liste d'événements avec leurs propriétés de layout { event, top, height, left, width }.
+ */
+export const calculateEventLayout = (dayEvents, gridSettings) => {
+  const { firstHour, lastHour, pixelsPerHour } = gridSettings;
+  const laidOutEvents = [];
+
+  // 1. Prétraitement : calculer top/height initiaux et filtrer/tronquer
+  const processedEvents = dayEvents
+    .map((event) => {
+      const eventStartHourFloat =
+        event.start.getHours() + event.start.getMinutes() / 60;
+      const eventEndHourFloat =
+        event.end.getHours() + event.end.getMinutes() / 60;
+
+      // Ignorer les événements complètement en dehors des heures de la grille
+      if (
+        eventEndHourFloat <= firstHour ||
+        eventStartHourFloat >= lastHour + 1
+      ) {
+        return null;
+      }
+
+      const displayStartHour = Math.max(firstHour, eventStartHourFloat);
+      const displayEndHour = Math.min(lastHour + 1, eventEndHourFloat);
+
+      if (displayStartHour >= displayEndHour) return null;
+
+      const top = (displayStartHour - firstHour) * pixelsPerHour;
+      const height = Math.max(
+        pixelsPerHour / 4,
+        (displayEndHour - displayStartHour) * pixelsPerHour - 1
+      ); // Hauteur min 15min, -1 pour bordure
+
+      return {
+        ...event,
+        _layout: {
+          top,
+          height,
+          start: displayStartHour, // Heure de début dans la grille
+          end: displayEndHour, // Heure de fin dans la grille
+          col: 0,
+          span: 1, // Initial span, non utilisé dans cet algo simplifié pour le span horizontal
+        },
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      if (a._layout.start < b._layout.start) return -1;
+      if (a._layout.start > b._layout.start) return 1;
+      if (a._layout.end > b._layout.end) return -1;
+      if (a._layout.end < b._layout.end) return 1;
+      return 0;
+    });
+
+  if (!processedEvents.length) return [];
+
+  // 2. Gestion des chevauchements et attribution des colonnes virtuelles
+  const columns = []; // Chaque élément est une liste d'événements dans cette colonne virtuelle
+  processedEvents.forEach((event) => {
+    let placed = false;
+    for (let i = 0; i < columns.length; i++) {
+      const col = columns[i];
+      const overlapsInCol = col.some(
+        (placedEvent) =>
+          event._layout.start < placedEvent._layout.end &&
+          event._layout.end > placedEvent._layout.start
+      );
+      if (!overlapsInCol) {
+        col.push(event);
+        event._layout.col = i;
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      columns.push([event]);
+      event._layout.col = columns.length - 1;
+    }
+  });
+
+  const numCols = columns.length || 1; // Évite la division par zéro
+
+  // 3. Calculer left/width finaux
+  processedEvents.forEach((currentEvent) => {
+    // Déterminer le nombre max de colonnes pour le groupe de chevauchement auquel cet event appartient
+    // Pour simplifier, on utilise numCols global calculé précédemment.
+    // Une logique plus avancée recalculerait numCols pour chaque "île" de chevauchement.
+    const colWidth = 100 / numCols;
+
+    laidOutEvents.push({
+      event: currentEvent, // L'événement original
+      top: currentEvent._layout.top,
+      height: currentEvent._layout.height,
+      left: currentEvent._layout.col * colWidth,
+      width: colWidth,
+    });
+  });
+
+  return laidOutEvents;
 };

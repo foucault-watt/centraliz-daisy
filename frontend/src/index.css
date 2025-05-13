@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @plugin "daisyui" {
-  themes: light --default, synthwave;
+  themes: cupcake --default, synthwave;
 }
 
 .geist {
@@ -12,7 +12,7 @@
   background-image: repeating-linear-gradient(
     -45deg,
     var(--color-base-100),
-    var(--color-base-100) 13px,
+    var(--color-base-100) 12px,
     var(--color-base-300) 13px,
     var(--color-base-300) 14px
   );

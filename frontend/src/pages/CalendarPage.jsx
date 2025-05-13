@@ -1,3 +1,4 @@
+import "cally";
 import { addDays, format, getDay, isWeekend, startOfWeek } from "date-fns";
 import { fr } from "date-fns/locale";
 import {
@@ -5,9 +6,9 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
-import DayView from "../components/Calendar/DayView";
-import WeekView from "../components/Calendar/WeekView";
+import { useEffect, useMemo, useRef, useState } from "react";
+import DayView from "../components/calendar/DayView";
+import WeekView from "../components/calendar/WeekView";
 import {
   formatWeekTitleString,
   generateSampleEvents,
@@ -17,6 +18,9 @@ import {
 function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState(window.innerWidth < 768 ? "day" : "week");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const callyRef = useRef(null);
+  const dropdownRef = useRef(null);
 
   // Générer les événements une seule fois ou lorsque la date de référence change de semaine
   // Pour un vrai backend, vous feriez un fetch ici.
@@ -100,8 +104,27 @@ function CalendarPage() {
 
   const workWeek = getWorkWeek(currentDate);
 
+  // Handler pour la sélection via cally
+  function handleCallyChange(e) {
+    const val = e.target.value;
+    if (val) setCurrentDate(new Date(val));
+    setDropdownOpen(false);
+  }
+
+  // Fermer le dropdown si clic en dehors
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    function handleClick(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [dropdownOpen]);
+
   return (
-    <div className="p-2 sm:p-4 max-w-full bg-base-200 min-h-screen">
+    <div className="p-2 sm:p-4 max-w-full bg-base-300 min-h-screen border border-base-200 rounded-xl">
       {/* En-tête du calendrier : Titre et boutons de navigation */}
       <div className="navbar bg-base-100 rounded-box shadow-md mb-4 sm:mb-6">
         <div className="navbar-start">
@@ -112,7 +135,58 @@ function CalendarPage() {
               : formatWeekTitleString(workWeek.start, workWeek.end)}
           </h1>
         </div>
-        <div className="navbar-end">
+        <div className="navbar-end flex gap-2">
+          {/* Dropdown calendrier cally */}
+          <div className="dropdown" ref={dropdownRef}>
+            <button
+              type="button"
+              tabIndex={0}
+              className="btn btn-ghost btn-sm sm:btn-md"
+              aria-label="Choisir une date"
+              onClick={() => setDropdownOpen((v) => !v)}
+            >
+              <CalendarIcon className="w-5 h-5" />
+            </button>
+            {dropdownOpen && (
+              <div
+                tabIndex={0}
+                className="dropdown-content z-[60] mt-2 p-2 bg-base-100 rounded-box border border-base-300 shadow-lg"
+              >
+                <calendar-date
+                  class="cally bg-base-100"
+                  value={format(currentDate, "yyyy-MM-dd")}
+                  onChange={handleCallyChange}
+                >
+                  <svg
+                    aria-label="Previous"
+                    className="fill-current size-4"
+                    slot="previous"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      fill="currentColor"
+                      d="M15.75 19.5 8.25 12l7.5-7.5"
+                    ></path>
+                  </svg>
+                  <svg
+                    aria-label="Next"
+                    className="fill-current size-4"
+                    slot="next"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      fill="currentColor"
+                      d="m8.25 4.5 7.5 7.5-7.5 7.5"
+                    ></path>
+                  </svg>
+                  <calendar-month></calendar-month>
+                </calendar-date>
+              </div>
+            )}
+          </div>
+          {/* Boutons de navigation */}
           <div className="join">
             <button
               aria-label="Période précédente"

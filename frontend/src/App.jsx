@@ -1,6 +1,5 @@
 import {
   Calendar1,
-  CalendarDays,
   Ellipsis,
   FileText,
   Mail,
@@ -8,19 +7,18 @@ import {
   Scale,
   Settings,
 } from "lucide-react";
-import React from "react";
-import BibliPage from "./pages/BibliPage.jsx";
+import React, { useEffect, useState } from "react";
 import {
-  NavLink,
-  Navigate,
   Route,
   BrowserRouter as Router,
   Routes,
+  useLocation,
+  useNavigate,
 } from "react-router-dom";
 import Logo from "./assets/Logo.jsx";
 import AuthPage from "./pages/AuthPage.jsx";
+import BibliPage from "./pages/BibliPage.jsx";
 import CalendarPage from "./pages/CalendarPage.jsx";
-
 
 const NotesPage = () => (
   <div className="p-6 bg-base-200">
@@ -59,87 +57,111 @@ const tabsData = [
     label: "Bibli",
     path: "/bibli",
     icon: <FileText size={18} />,
-    content: <BibliPage/>,
+    content: <BibliPage />,
   },
 ];
+
+function AppContent() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(
+    tabsData.find((tab) => tab.path === location.pathname)?.id || tabsData[0].id
+  );
+
+  // Gestion du changement d'onglet
+  const handleTabChange = (tab) => {
+    setActiveTab(tab.id);
+    navigate(tab.path);
+  };
+
+  // Synchroniser l'onglet actif avec l'URL
+  useEffect(() => {
+    const currentTab = tabsData.find((tab) => tab.path === location.pathname);
+    if (currentTab && currentTab.id !== activeTab) {
+      setActiveTab(currentTab.id);
+    }
+  }, [location.pathname, activeTab]);
+
+  return (
+    <div className="preview min-h-screen bg-base-100 geist">
+      <div className="navbar bg-base-100 shadow-sm px-5 border-b-1 border-base-300">
+        <div className="h-10 w-10 flex-none rounded-box overflow-auto ">
+          <Logo />
+        </div>
+        <div className="flex-1">
+          <a className="btn btn-ghost text-xl">Centraliz</a>
+        </div>
+
+        <div className="flex-none">
+          <div className="dropdown dropdown-hover dropdown-end">
+            <div tabIndex={0} role="button" className="btn m-1 btn-ghost">
+              <Ellipsis size={24} />
+            </div>
+            <ul
+              tabIndex={0}
+              className="dropdown-content menu bg-base-100 rounded-box z-1 w-52 p-2 shadow-sm"
+            >
+              <li>
+                <a>
+                  <MessageSquareHeart size={18} />
+                  Feedbacks
+                </a>
+              </li>
+              <li>
+                <a>
+                  <Settings size={18} />
+                  Paramètres
+                </a>
+              </li>
+              <li>
+                <a>
+                  <Scale size={18} />
+                  Mentions légales
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="flex-none">
+          <input
+            type="checkbox"
+            value="synthwave"
+            className="toggle theme-controller ml-4"
+          />
+        </div>
+      </div>
+      <div className="container mx-auto p-4">
+        {/* Structure des onglets avec input radio selon la demande */}
+        <div className="tabs tabs-lift">
+          {tabsData.map((tab) => (
+            <React.Fragment key={tab.id}>
+              <input
+                type="radio"
+                name="app_tabs"
+                className="tab"
+                aria-label={tab.label}
+                checked={activeTab === tab.id}
+                onChange={() => handleTabChange(tab)}
+                id={`tab-${tab.id}`}
+              />
+              <div className="tab-content bg-base-100 border-base-300 p-6">
+                {tab.content}
+              </div>
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function App() {
   return (
     <Router>
-      <div className="preview min-h-screen bg-base-100 geist">
-        <div class="navbar bg-base-100 shadow-sm px-5 border-b-1 border-base-300">
-          <div class="h-10 w-10 flex-none rounded-box overflow-auto ">
-            <Logo />
-          </div>
-          <div class="flex-1">
-            <a class="btn btn-ghost text-xl">Centraliz</a>
-          </div>
-
-          <div class="flex-none">
-            <div className="dropdown dropdown-hover dropdown-end">
-              <div tabIndex={0} role="button" className="btn m-1 btn-ghost">
-                <Ellipsis size={24} />
-              </div>
-              <ul
-                tabIndex={0}
-                className="dropdown-content menu bg-base-100 rounded-box z-1 w-52 p-2 shadow-sm"
-              >
-                <li>
-                  <a>
-                    <MessageSquareHeart size={18} />
-                    Feedbacks
-                  </a>
-                </li>
-                <li>
-                  <a>
-                    <Settings size={18} />
-                    Paramètres
-                  </a>
-                </li>
-                <li>
-                  <a>
-                    <Scale size={18} />
-                    Mentions légales
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div class="flex-none">
-            <input
-              type="checkbox"
-              value="synthwave"
-              className="toggle theme-controller ml-4"
-            />
-          </div>
-        </div>
-        <div className="container mx-auto p-4">
-          <div role="tablist" className="tabs tabs-lift">
-            {tabsData.map((tab) => (
-              <NavLink
-                key={tab.id}
-                to={tab.path}
-                className={({ isActive }) =>
-                  isActive ? "tab tab-active" : "tab"
-                }
-                aria-label={tab.label}
-              >
-                {tab.icon}
-                <span className="ml-2">{tab.label}</span>
-              </NavLink>
-            ))}
-          </div>
-          <div className="p-6 bg-base-100 border border-base-300 rounded-box">
-            <Routes>
-              {tabsData.map((tab) => (
-                <Route key={tab.id} path={tab.path} element={tab.content} />
-              ))}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </div>
-        </div>
-      </div>
+      <Routes>
+        <Route path="/*" element={<AppContent />} />
+      </Routes>
     </Router>
   );
 }
