@@ -8,13 +8,13 @@ import {
 } from "lucide-react";
 import { DateTime } from "luxon";
 import { useEffect, useMemo, useRef, useState } from "react";
-import DayView from "../components/calendar/DayView";
-import WeekView from "../components/calendar/WeekView";
+import DayView from "../../components/calendar/DayView";
+import WeekView from "../../components/calendar/WeekView";
 import {
   formatWeekTitleString,
   generateSampleEvents,
   getWorkWeek,
-} from "../utils/CalendarUtils";
+} from "../../utils/CalendarUtils";
 
 function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(

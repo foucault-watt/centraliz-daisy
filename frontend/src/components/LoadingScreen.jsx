@@ -3,7 +3,7 @@ import Logo from "../assets/Logo.jsx"; // Ajustez le chemin si nécessaire
 const LoadingScreen = () => {
   return (
     <div className="flex flex-col justify-center items-center h-screen bg-base-100">
-      <div className="h-28 w-28 animate-pulse animate-zoom-in-out">
+      <div className="h-28 w-28 animate-pulse animate-zoom-in-out  rounded-box  ">
         {" "}
         {/* Taille du logo et animation pulse */}
         <Logo />

@@ -9,9 +9,9 @@ import {
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Logo from "../assets/Logo.jsx";
-import BibliPage from "../pages/BibliPage.jsx"; // Importer la page Bibli
-import CalendarPage from "../pages/CalendarPage.jsx";
-import NotesPage from "../pages/NotesPage.jsx"; // Importer la page Notes
+import BibliPage from "../pages/app/BibliPage.jsx"; // Importer la page Bibli
+import CalendarPage from "../pages/app/CalendarPage.jsx";
+import NotesPage from "../pages/app/NotesPage.jsx"; // Importer la page Notes
 
 const tabsData = [
   {

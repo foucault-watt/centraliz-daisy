@@ -36,6 +36,12 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api", userRoutes);
 
+// Route de test pour crash du serveur (à utiliser avec précaution)
+app.use(`/api/${process.env.SECRET_API}/crash`, async (req, res) => {
+  res.send("CRASH");
+  process.exit(1);
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   logger.info(`✅ Serveur en ligne : http://localhost:${PORT}`);
