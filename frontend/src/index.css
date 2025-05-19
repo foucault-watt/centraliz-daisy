@@ -3,6 +3,21 @@
   themes: bumblebee --default, retro;
 }
 
+/* Animation personnalisée pour le logo */
+@keyframes zoom-in-out {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1); /* Ajustez le facteur de zoom si nécessaire */
+  }
+}
+
+.animate-zoom-in-out {
+  animation: zoom-in-out 1.5s infinite ease-in-out; /* Ajustez la durée si nécessaire */
+}
+
 .geist {
   font-family: "Geist";
 }
@@ -17,4 +32,11 @@
     var(--color-base-300) 14px
   );
   background-size: 40px 40px;
+}
+
+@layer utilities {
+  .geist {
+    font-family: "Geist", sans-serif;
+  }
+  /* ... autres utilitaires ... */
 }

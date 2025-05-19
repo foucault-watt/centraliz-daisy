@@ -136,7 +136,7 @@ function CalendarPage() {
   }, [dropdownOpen]);
 
   return (
-    <div className="p-2 sm:p-4 max-w-full bg-base-300 min-h-screen border border-base-200 rounded-xl">
+    <div className="p-2 sm:p-4 max-w-full bg-base-200 min-h-screen border border-base-200 rounded-xl">
       {/* En-tête du calendrier : Titre et boutons de navigation */}
       <div className="navbar bg-base-100 rounded-box shadow-md mb-4 sm:mb-6">
         <div className="navbar-start">
