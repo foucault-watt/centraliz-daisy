@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { DateTime } from "luxon";
 import {
   calculateEventLayout,
   getEventsForDay,
@@ -8,12 +8,24 @@ import {
 
 // EventCard reste majoritairement le même, mais le style sera appliqué dynamiquement
 function EventCard({ event, style }) {
-  const startTime = format(event.start, "HH:mm");
-  const endTime = format(event.end, "HH:mm");
+  const startTime = DateTime.fromJSDate(event.start, {
+    zone: "Europe/Paris",
+  }).toFormat("HH:mm");
+  const endTime = DateTime.fromJSDate(event.end, {
+    zone: "Europe/Paris",
+  }).toFormat("HH:mm");
+
+  // Déterminer la couleur en fonction de l'importance de l'événement
+  const eventColor =
+    event.id === "TNE"
+      ? "bg-info text-info-content"
+      : event.id === "CB"
+      ? "bg-error text-error-content"
+      : "bg-primary text-primary-content";
 
   return (
     <div
-      className={`card card-compact bg-${event.color} text-${event.color}-content shadow-md p-2 mb-0.5`} // mb-0.5 au lieu de mb-1
+      className={`card card-compact ${eventColor} shadow-md p-2 mb-0.5`} // mb-0.5 au lieu de mb-1
       style={{ ...style, position: "absolute", zIndex: 10 }} // Positionnement absolu
     >
       <p className="font-semibold text-xs">{event.name}</p>
@@ -41,7 +53,10 @@ function DayView({ currentDate, events }) {
     pixelsPerHour: PIXELS_PER_HOUR_DAY,
   };
 
-  const dayEvents = getEventsForDay(events, currentDate);
+  const dayEvents = getEventsForDay(
+    events,
+    DateTime.fromJSDate(currentDate, { zone: "Europe/Paris" }).toJSDate()
+  );
   const laidOutEvents = calculateEventLayout(dayEvents, gridSettings);
   const isCurrentDayToday = isToday(currentDate);
 

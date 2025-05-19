@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { DateTime } from "luxon";
 import { useEffect, useMemo, useRef, useState } from "react";
 import DayView from "../components/calendar/DayView";
 import WeekView from "../components/calendar/WeekView";
@@ -16,10 +17,11 @@ import {
 } from "../utils/CalendarUtils";
 
 function CalendarPage() {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(
+    DateTime.now().setZone("Europe/Paris").toJSDate()
+  );
   const [view, setView] = useState(window.innerWidth < 768 ? "day" : "week");
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const callyRef = useRef(null);
   const dropdownRef = useRef(null);
 
   // Générer les événements une seule fois ou lorsque la date de référence change de semaine
@@ -65,7 +67,9 @@ function CalendarPage() {
   const navigateToPrevious = () => {
     let newDate;
     if (view === "day") {
-      newDate = addDays(currentDate, -1);
+      newDate = DateTime.fromJSDate(currentDate, { zone: "Europe/Paris" })
+        .minus({ days: 1 })
+        .toJSDate();
       if (getDay(newDate) === 0) {
         // Si on atterrit un dimanche en reculant
         newDate = addDays(newDate, -2); // Aller au vendredi
@@ -75,7 +79,9 @@ function CalendarPage() {
       }
     } else {
       // Vue semaine
-      newDate = addDays(currentDate, -7);
+      newDate = DateTime.fromJSDate(currentDate, { zone: "Europe/Paris" })
+        .minus({ weeks: 1 })
+        .toJSDate();
     }
     setCurrentDate(newDate);
   };
@@ -83,7 +89,9 @@ function CalendarPage() {
   const navigateToNext = () => {
     let newDate;
     if (view === "day") {
-      newDate = addDays(currentDate, 1);
+      newDate = DateTime.fromJSDate(currentDate, { zone: "Europe/Paris" })
+        .plus({ days: 1 })
+        .toJSDate();
       if (getDay(newDate) === 6) {
         // Si on atterrit un samedi en avançant
         newDate = addDays(newDate, 2); // Aller au lundi
@@ -93,16 +101,20 @@ function CalendarPage() {
       }
     } else {
       // Vue semaine
-      newDate = addDays(currentDate, 7);
+      newDate = DateTime.fromJSDate(currentDate, { zone: "Europe/Paris" })
+        .plus({ weeks: 1 })
+        .toJSDate();
     }
     setCurrentDate(newDate);
   };
 
   const navigateToToday = () => {
-    setCurrentDate(new Date());
+    setCurrentDate(DateTime.now().setZone("Europe/Paris").toJSDate());
   };
 
-  const workWeek = getWorkWeek(currentDate);
+  const workWeek = getWorkWeek(
+    DateTime.fromJSDate(currentDate, { zone: "Europe/Paris" }).toJSDate()
+  );
 
   // Handler pour la sélection via cally
   function handleCallyChange(e) {

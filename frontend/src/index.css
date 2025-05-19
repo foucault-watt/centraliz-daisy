@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @plugin "daisyui" {
-  themes: cupcake --default, synthwave;
+  themes: bumblebee --default, retro;
 }
 
 .geist {

@@ -15,6 +15,7 @@
     "cally": "^0.8.0",
     "daisyui": "^5.0.35",
     "lucide-react": "^0.507.0",
+    "luxon": "^3.6.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.5.3",

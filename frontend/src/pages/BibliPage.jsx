@@ -1,9 +1,10 @@
-import React from "react";
-
 function BibliPage() {
   return (
     <div>
       <div className="p-6 bg-base-200">
+        <div className="status status-error animate-bounce"></div>
+        {" "}
+        Cilien Cad's Cabart is still offline ...
         <h1 className="text-2xl font-bold">Bibli</h1>
         <p className="mt-4">
           Regardez ici tout ce qui est dispo dans notre belle bibli !

@@ -2,6 +2,7 @@ import {
   Calendar1,
   Ellipsis,
   FileText,
+  Fingerprint,
   Mail,
   MessageSquareHeart,
   Scale,
@@ -39,10 +40,10 @@ const tabsData = [
     content: <CalendarPage />,
   },
   {
-    id: "mail",
-    label: "Mails",
-    path: "/mail",
-    icon: <Mail size={18} />,
+    id: "auth",
+    label: "Authentification",
+    path: "/auth",
+    icon: <Fingerprint size={18} />,
     content: <AuthPage />,
   },
   {
@@ -104,9 +105,10 @@ function AppContent() {
               <li>
                 <a>
                   <MessageSquareHeart size={18} />
-                  Feedbacks
+                  Feedbacks<div className="badge badge-accent">Dis bien</div>
                 </a>
               </li>
+              <div className="divider divider-horizontal"></div>
               <li>
                 <a>
                   <Settings size={18} />
@@ -126,7 +128,7 @@ function AppContent() {
         <div className="flex-none">
           <input
             type="checkbox"
-            value="synthwave"
+            value="retro"
             className="toggle theme-controller ml-4"
           />
         </div>
@@ -161,7 +163,6 @@ function App() {
     <Router>
       <Routes>
         <Route path="/*" element={<AppContent />} />
-        <Route path="/auth" element={<AuthPage />} />
       </Routes>
     </Router>
   );

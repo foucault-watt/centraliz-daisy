@@ -1,16 +1,6 @@
-import {
-  addDays,
-  eachDayOfInterval,
-  endOfDay,
-  format,
-  isSameDay,
-  isWithinInterval,
-  setHours,
-  setMinutes,
-  startOfDay,
-  startOfWeek,
-} from "date-fns";
+import { format, isWithinInterval, setHours, setMinutes } from "date-fns";
 import { fr } from "date-fns/locale";
+import { DateTime } from "luxon";
 
 /**
  * Retourne les jours de la semaine de travail (lundi à vendredi) pour une date donnée.
@@ -18,10 +8,35 @@ import { fr } from "date-fns/locale";
  * @returns {{start: Date, end: Date, days: Date[]}} Un objet avec le début, la fin et un tableau des jours de la semaine de travail.
  */
 export const getWorkWeek = (date) => {
-  const monday = startOfWeek(date, { weekStartsOn: 1 });
-  const friday = addDays(monday, 4);
-  const days = eachDayOfInterval({ start: monday, end: friday });
-  return { start: monday, end: friday, days };
+  // Convertir la date en objet DateTime avec le bon fuseau horaire
+  const dateTime = DateTime.fromJSDate(date, { zone: "Europe/Paris" });
+
+  // Trouver le lundi de la semaine courante
+  // Si c'est déjà un lundi (1), on garde cette date
+  // Sinon, on remonte jusqu'au lundi précédent
+  let monday;
+  const dayOfWeek = dateTime.weekday; // 1 = lundi, 7 = dimanche dans Luxon
+
+  if (dayOfWeek === 1) {
+    monday = dateTime;
+  } else if (dayOfWeek > 1 && dayOfWeek <= 7) {
+    // Si nous sommes entre mardi (2) et dimanche (7), on recule jusqu'au lundi
+    monday = dateTime.minus({ days: dayOfWeek - 1 });
+  }
+
+  // Convertir en date JavaScript
+  const mondayDate = monday.toJSDate();
+
+  // Créer chaque jour de la semaine de travail (lundi à vendredi)
+  const days = [];
+  for (let i = 0; i < 5; i++) {
+    days.push(DateTime.fromJSDate(mondayDate).plus({ days: i }).toJSDate());
+  }
+
+  // Le vendredi est 4 jours après le lundi
+  const fridayDate = days[4];
+
+  return { start: mondayDate, end: fridayDate, days };
 };
 
 /**
@@ -29,18 +44,28 @@ export const getWorkWeek = (date) => {
  * @param {Date} date - La date à vérifier.
  * @returns {boolean} True si la date est aujourd'hui, false sinon.
  */
-export const isToday = (date) => isSameDay(date, new Date());
+export const isToday = (date) => {
+  const now = DateTime.now().setZone("Europe/Paris");
+  return DateTime.fromJSDate(date, { zone: "Europe/Paris" }).hasSame(
+    now,
+    "day"
+  );
+};
 
 /**
  * Génère un tableau des heures de travail.
  * @returns {Array<{hour: number, label: string}>} Un tableau d'objets avec l'heure et le label.
  */
 export const getWorkingHours = () => {
-  // Crée un tableau [{hour: 8, label: "08:00"}, ..., {hour: 17, label: "17:00"}] pour 10 slots horaires
-  // La journée de travail va de 8h00 à 18h00 (le slot de 17h va jusqu'à 17h59)
   const hoursArray = [];
   for (let i = 8; i <= 17; i++) {
-    hoursArray.push({ hour: i, label: `${i.toString().padStart(2, "0")}:00` });
+    hoursArray.push({
+      hour: i,
+      label: DateTime.fromObject(
+        { hour: i },
+        { zone: "Europe/Paris" }
+      ).toFormat("HH:mm"),
+    });
   }
   return hoursArray;
 };
@@ -65,122 +90,56 @@ export const formatWeekTitleString = (startDate, endDate) => {
 
 /**
  * Génère des événements de test pour le calendrier.
- * @param {Date} referenceDate - La date de référence pour générer les événements autour de cette semaine.
  * @returns {Array<Object>} Un tableau d'événements.
  */
 export function generateSampleEvents() {
-  // Définir la semaine du 12/05/2025
-  const baseDate = new Date(2025, 4, 12); // 12 mai 2025 (mois indexés à partir de 0)
-
-  // Créer un tableau pour stocker les événements
-  const events = [];
-
-  // Lundi 12/05/2025
-  events.push({
-    id: 1,
-    name: "Cours Mathématiques",
-    type: "Cours Magistral",
-    prof: "M. Dupont",
-    room: "A101",
-    color: "primary",
-    start: new Date(2025, 4, 12, 8, 30),
-    end: new Date(2025, 4, 12, 10, 30),
-  });
-
-  events.push({
-    id: 2,
-    name: "TD Informatique",
-    type: "TD",
-    prof: "Mme Martin",
-    room: "B203",
-    color: "accent",
-    start: new Date(2025, 4, 12, 14, 0),
-    end: new Date(2025, 4, 12, 16, 0),
-  });
-
-  // Mardi 13/05/2025
-  events.push({
-    id: 3,
-    name: "Projet Collaboratif",
-    type: "TP",
-    prof: "M. Bernard",
-    room: "Labo C",
-    color: "secondary",
-    start: new Date(2025, 4, 13, 9, 0),
-    end: new Date(2025, 4, 13, 12, 0),
-    description: "Préparation du rendu final",
-  });
-
-  // Mercredi 14/05/2025
-  events.push({
-    id: 4,
-    name: "Communication",
-    type: "Cours Magistral",
-    prof: "Mme Petit",
-    room: "Amphi A",
-    color: "info",
-    start: new Date(2025, 4, 14, 10, 0),
-    end: new Date(2025, 4, 14, 12, 0),
-  });
-
-  events.push({
-    id: 5,
-    name: "Anglais",
-    type: "TD",
-    prof: "M. Smith",
-    room: "D105",
-    color: "success",
-    start: new Date(2025, 4, 14, 13, 30),
-    end: new Date(2025, 4, 14, 15, 30),
-  });
-
-  // Jeudi 15/05/2025
-  events.push({
-    id: 6,
-    name: "Gestion de Projet",
-    type: "Cours Magistral",
-    prof: "Mme Dubois",
-    room: "Amphi B",
-    color: "warning",
-    start: new Date(2025, 4, 15, 8, 0),
-    end: new Date(2025, 4, 15, 11, 0),
-    description: "Examen en fin de séance",
-  });
-
-  // Vendredi 16/05/2025
-  events.push({
-    id: 7,
-    name: "Soutenance",
-    type: "Évaluation",
-    prof: "Jury",
-    room: "Salle des conseils",
-    color: "error",
-    start: new Date(2025, 4, 16, 14, 0),
-    end: new Date(2025, 4, 16, 15, 0),
-  });
-
-  events.push({
-    id: 8,
-    name: "Synthèse hebdomadaire",
-    type: "Réunion",
-    prof: "Équipe pédagogique",
-    room: "E001",
-    color: "neutral",
-    start: new Date(2025, 4, 16, 16, 0),
-    end: new Date(2025, 4, 16, 17, 30),
-  });
-
-  // Pour ajouter des événements qui se chevauchent
-  events.push({
-    id: 9,
-    name: "Tutorat",
-    type: "Accompagnement",
-    prof: "M. Robert",
-    room: "E202",
-    color: "secondary",
-    start: new Date(2025, 4, 13, 11, 0),
-    end: new Date(2025, 4, 13, 13, 0),
-  });
+  const events = [
+    {
+      id: "TNE",
+      name: "Réunion d'équipe",
+      type: "Réunion",
+      prof: "M. Dupont",
+      room: "Salle A",
+      start: new Date(2025, 4, 19, 9, 0),
+      end: new Date(2025, 4, 19, 10, 0),
+    },
+    {
+      id: "CB",
+      name: "Présentation finale",
+      type: "Évaluation",
+      prof: "Mme Martin",
+      room: "Amphi B",
+      start: new Date(2025, 4, 20, 14, 0),
+      end: new Date(2025, 4, 20, 16, 0),
+    },
+    {
+      id: 3,
+      name: "Cours de Mathématiques",
+      type: "Cours Magistral",
+      prof: "M. Bernard",
+      room: "A101",
+      start: new Date(2025, 4, 21, 8, 30),
+      end: new Date(2025, 4, 21, 10, 30),
+    },
+    {
+      id: 4,
+      name: "Atelier Informatique",
+      type: "TP",
+      prof: "Mme Petit",
+      room: "Labo C",
+      start: new Date(2025, 4, 22, 13, 0),
+      end: new Date(2025, 4, 22, 15, 0),
+    },
+    {
+      id: 5,
+      name: "Anglais",
+      type: "TD",
+      prof: "M. Smith",
+      room: "D105",
+      start: new Date(2025, 4, 23, 10, 0),
+      end: new Date(2025, 4, 23, 12, 0),
+    },
+  ];
 
   return events;
 }
@@ -192,8 +151,12 @@ export function generateSampleEvents() {
  * @returns {Array<Object>} Les événements pour ce jour.
  */
 export const getEventsForDay = (events, day) => {
-  const dayStart = startOfDay(day);
-  const dayEnd = endOfDay(day);
+  const dayStart = DateTime.fromJSDate(day, { zone: "Europe/Paris" })
+    .startOf("day")
+    .toJSDate();
+  const dayEnd = DateTime.fromJSDate(day, { zone: "Europe/Paris" })
+    .endOf("day")
+    .toJSDate();
   return events.filter(
     (event) =>
       isWithinInterval(event.start, { start: dayStart, end: dayEnd }) ||
