@@ -1,79 +1,56 @@
-import axios from "axios";
-import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import LoadingScreen from "./LoadingScreen.jsx"; // Importer LoadingScreen
+import { useAuth } from "../context/AuthContext.jsx";
+import LoadingScreen from "./LoadingScreen.jsx";
 
-const ProtectedRoute = ({ onboardingRequired = false }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
-  const [loading, setLoading] = useState(true);
+const ProtectedRoute = ({
+  onboardingRequired = false,
+  onboardingSpecific = false, // Nouvelle prop pour la page /onboarding elle-même
+}) => {
+  const { isAuthenticated, hasIcal, isLoading } = useAuth(); // Utiliser hasIcal au lieu de icalLink
   const location = useLocation();
 
-  useEffect(() => {
-    const checkStatus = async () => {
-      let auth = false;
-      try {
-        await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/me`, {
-          withCredentials: true,
-        });
-        auth = true;
-        setIsAuthenticated(true);
-
-        try {
-          const icalResponse = await axios.get(
-            `${import.meta.env.VITE_BACKEND_URL}/api/calendar`,
-            { withCredentials: true }
-          );
-          // Vérifier si icalLink est présent et non-vide dans la réponse
-          if (icalResponse.data && icalResponse.data.icalLink) {
-            setHasCompletedOnboarding(true);
-          } else {
-            // Si icalLink est null, vide, ou non présent
-            setHasCompletedOnboarding(false);
-            console.log("ProtectedRoute: iCal link is null or empty.");
-          }
-        } catch (icalError) {
-          setHasCompletedOnboarding(false);
-          console.log(
-            "ProtectedRoute: Error fetching iCal link.",
-            icalError.message
-          );
-        }
-      } catch (authError) {
-        setIsAuthenticated(false);
-        setHasCompletedOnboarding(false); // Par sécurité
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkStatus();
-  }, []); // Exécuter une seule fois au montage
-
-  if (loading) {
-    return <LoadingScreen />; // Utiliser le composant LoadingScreen
+  if (isLoading) {
+    return <LoadingScreen />;
   }
 
   if (!isAuthenticated) {
+    // Si non authentifié, rediriger vers la page d'accueil, en sauvegardant la page d'origine
+    // sauf si la page d'origine est déjà la page d'accueil.
     if (location.pathname !== "/") {
       return <Navigate to="/" state={{ from: location }} replace />;
     }
+    // Si déjà sur "/", ne rien faire (laisser LandingPage s'afficher)
+    // Ceci est géré par la route "/" elle-même qui n'est pas sous ProtectedRoute.
+    // Donc, si on arrive ici non authentifié, c'est qu'on essaie d'accéder à une route protégée.
+    return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  if (isAuthenticated) {
-    if (onboardingRequired && !hasCompletedOnboarding) {
-      // Si la route requiert l'onboarding et qu'il n'est pas fait (hasCompletedOnboarding est false)
-      // et que nous ne sommes pas déjà sur la page d'onboarding, rediriger.
-      if (location.pathname !== "/onboarding") {
-        return <Navigate to="/onboarding" state={{ from: location }} replace />;
-      }
-    }
-    if (hasCompletedOnboarding && location.pathname === "/onboarding") {
+  // L'utilisateur est authentifié
+  const hasCompletedOnboarding = hasIcal; // Utiliser hasIcal
+
+  if (onboardingSpecific) {
+    // Cas spécifique pour la route /onboarding
+    if (hasCompletedOnboarding) {
+      // Si l'onboarding est fait, rediriger de /onboarding vers /app/calendar
       return <Navigate to="/app/calendar" state={{ from: location }} replace />;
     }
+    // Sinon (onboarding non fait), autoriser l'accès à /onboarding
+    return <Outlet />;
   }
 
-  return <Outlet />; // Afficher le contenu de la route si toutes les conditions sont remplies
+  if (onboardingRequired && !hasCompletedOnboarding) {
+    // Si la route requiert l'onboarding et qu'il n'est pas fait,
+    // rediriger vers /onboarding.
+    // On s'assure de ne pas être déjà sur /onboarding pour éviter une boucle,
+    // bien que le cas `onboardingSpecific` devrait déjà gérer cela.
+    if (location.pathname !== "/onboarding") {
+      return <Navigate to="/onboarding" state={{ from: location }} replace />;
+    }
+  }
+
+  // Si toutes les conditions sont remplies (authentifié, et onboarding fait si requis),
+  // ou si la route ne requiert pas l'onboarding et l'utilisateur est authentifié.
+  return <Outlet />;
 };
 
 export default ProtectedRoute;

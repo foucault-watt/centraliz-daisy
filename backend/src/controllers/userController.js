@@ -2,11 +2,21 @@ import axios from "axios";
 import supabase from "../config/supabase.js";
 
 export const getMe = (req, res) => {
-  const { userName, displayName } = req.user || {};
-  res.json({ user: { userName, displayName } });
+  if (!req.user) {
+    // Si req.user n'est pas défini par le middleware, l'utilisateur n'est pas authentifié.
+    return res.json({ user: null }); // Renvoyer null pour l'utilisateur
+  }
+  // Assurez-vous que le middleware d'authentification charge bien le 'group' dans req.user
+  // Si ce n'est pas le cas, il faudra le récupérer de la base de données ici.
+  // Pour l'instant, on suppose qu'il est disponible.
+  const { userName, displayName, hasIcal, isAdmin, group } = req.user;
+  res.json({ user: { userName, displayName, hasIcal, isAdmin, group } });
 };
 
 export const getIcalLink = async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: "Authentification requise" });
+  }
   const { userName } = req.user;
 
   try {
@@ -29,6 +39,9 @@ export const getIcalLink = async (req, res) => {
 };
 
 export const uploadIcalLink = async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: "Authentification requise" });
+  }
   const { userName } = req.user;
   const { icalLink } = req.body;
 
@@ -53,6 +66,19 @@ export const uploadIcalLink = async (req, res) => {
         return res.status(500).json({ error: "Erreur interne du serveur" });
       }
 
+      // Mettre à jour la session utilisateur
+      if (req.session.user) {
+        req.session.user.hasIcal = true;
+      }
+      // express-session sauvegarde généralement la session automatiquement à la fin de la réponse.
+      // Si vous rencontrez des problèmes, vous pouvez forcer la sauvegarde :
+      // req.session.save(err => {
+      //   if (err) {
+      //     console.error("Erreur lors de la sauvegarde de la session :", err);
+      //     return res.status(500).json({ error: "Erreur interne du serveur lors de la sauvegarde de la session" });
+      //   }
+      //   res.status(200).json({ message: "icalLink mis à jour avec succès" });
+      // });
       res.status(200).json({ message: "icalLink mis à jour avec succès" });
     } else {
       // Si le lien n'est pas valide

@@ -6,7 +6,11 @@ import express from "express";
 import session from "express-session";
 import helmet from "helmet";
 import morgan from "morgan";
+import adminRoutes from "./routes/adminRoutes.js"; // Ajout de l'import admin
 import authRoutes from "./routes/authRoutes.js";
+import calendarRoutes from "./routes/calendarRoutes.js"; // Ajout de l'import
+import configRoutes from "./routes/configRoutes.js"; // Import des routes de config
+import logRoutes from "./routes/logRoutes.js"; // Import des routes de logs
 import userRoutes from "./routes/userRoutes.js";
 import logger from "./utils/logger.js";
 
@@ -34,7 +38,11 @@ app.use(
 );
 
 app.use("/api/auth", authRoutes);
-app.use("/api", userRoutes);
+app.use("/api", userRoutes); // userRoutes gère déjà /api/calendar pour le lien
+app.use("/api/events", calendarRoutes); // Nouvelles routes pour les données d'événements
+app.use("/api/config", configRoutes); // Routes pour la configuration
+app.use("/api/admin", adminRoutes); // Routes d'administration
+app.use("/api/admin/logs", logRoutes); // Routes pour les logs
 
 // Route de test pour crash du serveur (à utiliser avec précaution)
 app.use(`/api/${process.env.SECRET_API}/crash`, async (req, res) => {

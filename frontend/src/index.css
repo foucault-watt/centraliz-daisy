@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @plugin "daisyui" {
-  themes: bumblebee --default, retro;
+  themes: bumblebee --default, dracula;
 }
 
 /* Animation personnalisée pour le logo */

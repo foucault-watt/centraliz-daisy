@@ -1,75 +1,35 @@
-import axios from "axios";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Logo from "../assets/Logo.jsx";
-import LoadingScreen from "../components/LoadingScreen.jsx"; // Importer LoadingScreen
+import LoadingScreen from "../components/LoadingScreen.jsx";
+import { useAuth } from "../context/AuthContext.jsx"; // Importer useAuth
 
 const LandingPage = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
-  const [icalLink, setIcalLink] = useState(null);
+  const { user, hasIcal, isAuthenticated, isLoading } = useAuth(); // Utiliser hasIcal
 
   useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        const userResponse = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/me`,
-          { withCredentials: true }
-        );
-        setUser(userResponse.data.user);
-        if (userResponse.data.user) {
-          try {
-            const icalResponse = await axios.get(
-              `${import.meta.env.VITE_BACKEND_URL}/api/calendar`,
-              { withCredentials: true }
-            );
-            // Vérifier explicitement si icalLink est présent et non-vide
-            if (icalResponse.data && icalResponse.data.icalLink) {
-              setIcalLink(icalResponse.data.icalLink);
-            } else {
-              // Si icalLink est null, vide, ou non présent dans la réponse
-              setIcalLink(null);
-              console.log(
-                "LandingPage: iCal link is null or empty, user needs onboarding."
-              );
-            }
-          } catch (icalError) {
-            setIcalLink(null); // S'assurer que icalLink est null en cas d'erreur
-            console.log(
-              "LandingPage: iCal link not found or error fetching, user may need onboarding:",
-              icalError.message
-            );
-          }
-        }
-      } catch (authError) {
-        // L'utilisateur n'est pas authentifié ou une erreur s'est produite
-        console.log(
-          "User not authenticated or error fetching user:",
-          authError.message
-        );
-        // setUser restera null
-      } finally {
-        setLoading(false);
+    if (!isLoading) {
+      if (isAuthenticated && hasIcal) {
+        navigate("/app/calendar", { replace: true });
+      } else if (isAuthenticated && !hasIcal) {
+        navigate("/onboarding", { replace: true });
       }
-    };
-    checkAuthStatus();
-  }, []); // Pas de dépendances, exécuté une seule fois
-
-  useEffect(() => {
-    if (!loading) {
-      if (user && icalLink) {
-        // icalLink doit être une chaîne non vide ici
-        navigate("/app/calendar");
-      } else if (user && !icalLink) {
-        // Si user existe mais icalLink est null ou vide
-        navigate("/onboarding");
-      }
+      // Si non authentifié, reste sur la LandingPage
     }
-  }, [loading, user, icalLink, navigate]);
+  }, [isLoading, isAuthenticated, user, hasIcal, navigate]); // Ajouter hasIcal aux dépendances
 
-  if (loading) {
-    return <LoadingScreen />; // Utiliser le composant LoadingScreen
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
+  // Si l'utilisateur est déjà authentifié et en cours de redirection,
+  // on peut aussi afficher LoadingScreen pour éviter un flash de la LandingPage.
+  if (!isLoading && isAuthenticated) {
+    // Si on est ici, cela signifie que la redirection via useEffect n'a pas encore eu lieu
+    // ou que l'utilisateur est authentifié mais la logique de redirection est en cours.
+    // Afficher un écran de chargement peut être une bonne UX.
+    return <LoadingScreen />;
   }
 
   return (

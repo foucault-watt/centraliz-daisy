@@ -18,35 +18,47 @@ function EventCardWeek({ event, style }) {
     zone: "Europe/Paris",
   }).toFormat("HH:mm");
 
-  // Déterminer la couleur en fonction de l'importance de l'événement
-  const eventColor =
-    event.id === "TNE"
-      ? "bg-info text-info-content border-info"
-      : event.id === "CB"
-      ? "bg-error text-error-content border-error"
-      : "bg-primary text-primary-content border-primary";
+  const eventColorClass =
+    event.className || "bg-primary text-primary-content border-primary";
+
+  const tooltipContent = [
+    `${event.name} (${startTime} - ${endTime})`,
+    event.prof !== "N/A" ? `Prof: ${event.prof}` : null,
+    event.room ? `Salle: ${event.room}` : null,
+    event.description ? `Desc: ${event.description}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return (
     <div
       className="tooltip tooltip-fixed w-full z-[50]"
-      data-tip={`${event.name} (${startTime} - ${endTime})\n${event.type} • ${
-        event.prof
-      } • ${event.room}${event.description ? "\n" + event.description : ""}`}
+      data-tip={tooltipContent}
       style={{ ...style, position: "absolute", zIndex: 10 }}
     >
       <div
-        className={`${eventColor} rounded p-1 shadow text-left w-full h-full overflow-hidden text-xs border-opacity-40 flex flex-col`}
+        className={`${eventColorClass} rounded-xl p-2 shadow-lg w-full h-full overflow-hidden flex flex-col justify-center items-center text-center`}
       >
-        <div className="font-semibold truncate">{event.name}</div>
-        <div className="flex flex-wrap gap-x-1 text-[10px] opacity-90">
-          <span className="truncate">{event.type}</span>
-          <span className="opacity-60">•</span>
-          <span className="truncate">{event.prof}</span>
-          <span className="opacity-60">•</span>
-          <span className="truncate">{event.room}</span>
+        {/* Main content: Name and Room */}
+        <div className="w-full flex flex-col items-center">
+          <div
+            className="font-extrabold text-lg leading-tight break-words text-white"
+            style={{ textShadow: "2px 2px 4px rgba(0,0,0,0.3)" }}
+          >
+            {event.name}
+          </div>
+          {event.room && (
+            <div className="badge badge-xs badge-ghost mt-0.5 px-1.5 opacity-70">
+              {event.room}
+            </div>
+          )}
         </div>
-        <div className="text-[10px] opacity-70 mt-auto">
-          {startTime} - {endTime}
+
+        {/* Bottom content: Professor */}
+        <div className="w-full mt-2 text-xs opacity-80 space-y-1 text-white">
+          {event.prof !== "N/A" && (
+            <div className="italic truncate">{event.prof}</div>
+          )}
         </div>
       </div>
     </div>
@@ -173,14 +185,14 @@ function WeekView({ workWeekDays, events, currentDate }) {
                 {laidOutEvents.map(
                   ({ event: ev, top, height, left, width }) => (
                     <EventCardWeek
-                      key={ev.id}
+                      key={ev.id} // Assurez-vous que ev.id est unique
                       event={ev}
                       style={{
                         top: `${top}px`,
                         height: `${height}px`,
                         left: `${left}%`,
-                        width: `calc(${width}% - 2px)`,
-                        marginLeft: `1px`,
+                        width: `calc(${width}% - 4px)`, // Augmentation du margin horizontal
+                        marginLeft: `2px`, // Augmentation légère
                       }}
                     />
                   )

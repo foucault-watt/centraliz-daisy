@@ -36,5 +36,14 @@ export default defineConfig({
       },
     }),
   ],
-  server: { hmr: true },
+  server: {
+    hmr: true,
+    proxy: {
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 });

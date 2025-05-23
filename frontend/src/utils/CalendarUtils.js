@@ -1,5 +1,6 @@
 import { format, isWithinInterval, setHours, setMinutes } from "date-fns";
 import { fr } from "date-fns/locale";
+import ICAL from "ical.js"; // Assurez-vous d'avoir installé ical.js: npm install ical.js
 import { DateTime } from "luxon";
 
 /**
@@ -89,60 +90,115 @@ export const formatWeekTitleString = (startDate, endDate) => {
 };
 
 /**
- * Génère des événements de test pour le calendrier.
- * @returns {Array<Object>} Un tableau d'événements.
+ * Parse les données iCalendar brutes et les transforme en un tableau d'événements.
+ * @param {string} icalData - Les données brutes du fichier iCalendar.
+ * @returns {Array<Object>} Un tableau d'objets événements formatés pour l'application.
  */
-export function generateSampleEvents() {
-  const events = [
-    {
-      id: "TNE",
-      name: "Réunion d'équipe",
-      type: "Réunion",
-      prof: "M. Dupont",
-      room: "Salle A",
-      start: new Date(2025, 4, 19, 9, 0),
-      end: new Date(2025, 4, 19, 10, 0),
-    },
-    {
-      id: "CB",
-      name: "Présentation finale",
-      type: "Évaluation",
-      prof: "Mme Martin",
-      room: "Amphi B",
-      start: new Date(2025, 4, 20, 14, 0),
-      end: new Date(2025, 4, 20, 16, 0),
-    },
-    {
-      id: 3,
-      name: "Cours de Mathématiques",
-      type: "Cours Magistral",
-      prof: "M. Bernard",
-      room: "A101",
-      start: new Date(2025, 4, 21, 8, 30),
-      end: new Date(2025, 4, 21, 10, 30),
-    },
-    {
-      id: 4,
-      name: "Atelier Informatique",
-      type: "TP",
-      prof: "Mme Petit",
-      room: "Labo C",
-      start: new Date(2025, 4, 22, 13, 0),
-      end: new Date(2025, 4, 22, 15, 0),
-    },
-    {
-      id: 5,
-      name: "Anglais",
-      type: "TD",
-      prof: "M. Smith",
-      room: "D105",
-      start: new Date(2025, 4, 23, 10, 0),
-      end: new Date(2025, 4, 23, 12, 0),
-    },
-  ];
+export const parseICalData = (icalData) => {
+  if (!icalData) return [];
 
-  return events;
-}
+  try {
+    const jcalData = ICAL.parse(icalData);
+    const comp = new ICAL.Component(jcalData);
+    const vevents = comp.getAllSubcomponents("vevent");
+
+    return vevents.map((veventComponent) => {
+      const vevent = new ICAL.Event(veventComponent);
+
+      const summary = vevent.summary || "";
+      const location = vevent.location || "";
+      const description = vevent.description || ""; // Ajout de la description
+      const dtstart = vevent.startDate.toJSDate();
+      const dtend = vevent.endDate.toJSDate();
+      const uid = vevent.uid || `${summary}-${dtstart.toISOString()}`; // ID unique
+
+      // Extraction du nom du cours, professeur et type de cours depuis le résumé
+      // Exemple de summary: "R1.01 - Initiation au développement - M. TOTO - Cours"
+      // ou "SAE1.01 - Exploration algo - Mme TATA - TP"
+      // ou "Anglais - M. TRUC - TD"
+      // ou "R1.01 - Initiation au développement - M. TOTO" (sans type)
+      // ou "Événement spécial" (sans tirets)
+      const parts = summary.split("-").map((part) => part.trim());
+      let courseName, professor, courseType;
+
+      if (parts.length >= 3) {
+        // Cas typique: "NOM_COURS - PROF - TYPE" ou "MODULE - NOM_COURS - PROF - TYPE"
+        // On essaie de deviner. Si le dernier élément ressemble à un type de cours connu.
+        const potentialType = parts[parts.length - 1].toUpperCase();
+        const knownTypes = [
+          "COURS",
+          "TD",
+          "TP",
+          "CM",
+          "TUT",
+          "PROJET",
+          "EXAMEN",
+          "PARTIEL",
+          "CONTRÔLE",
+          "CB",
+          "TNE",
+          "SOUTENANCE",
+          "RÉUNION",
+        ];
+
+        if (knownTypes.some((type) => potentialType.includes(type))) {
+          courseType = parts.pop(); // Le dernier est le type
+          professor = parts.pop(); // L'avant-dernier est le prof
+          courseName = parts.join(" - "); // Le reste est le nom du cours
+        } else {
+          // Pas de type de cours clair à la fin
+          professor = parts.pop();
+          courseName = parts.join(" - ");
+          courseType = "N/A";
+        }
+      } else if (parts.length === 2) {
+        // Cas: "NOM_COURS - PROF"
+        professor = parts[1];
+        courseName = parts[0];
+        courseType = "N/A";
+      } else {
+        // Cas: "NOM_COURS"
+        courseName = summary;
+        professor = "N/A";
+        courseType = "N/A";
+      }
+
+      // Détermination du className pour la couleur
+      const isTNE = summary.toUpperCase().includes("TNE");
+      const isCB =
+        summary.toUpperCase().includes("CB") ||
+        summary.toUpperCase().includes("CONTRÔLE BLOQUÉ");
+
+      let eventClassName = "bg-primary text-primary-content border-primary"; // Couleur par défaut
+      if (isTNE) {
+        eventClassName = "bg-info text-info-content border-info";
+      } else if (isCB) {
+        eventClassName = "bg-error text-error-content border-error";
+      } else if (
+        (courseType && courseType.toUpperCase().includes("EXAMEN")) ||
+        courseType.toUpperCase().includes("PARTIEL") ||
+        courseType.toUpperCase().includes("CONTRÔLE")
+      ) {
+        eventClassName = "bg-warning text-warning-content border-warning";
+      }
+
+      return {
+        id: uid, // Utiliser l'UID de l'événement iCal ou un fallback
+        name: courseName,
+        prof: professor,
+        type: courseType,
+        room: location,
+        start: dtstart,
+        end: dtend,
+        description: description,
+        className: eventClassName, // Pour le style dynamique
+      };
+    });
+  } catch (error) {
+    console.error("Erreur lors du parsing des données iCal:", error);
+    return []; // Retourner un tableau vide en cas d'erreur
+  }
+};
 
 /**
  * Récupère les événements pour un jour spécifique.

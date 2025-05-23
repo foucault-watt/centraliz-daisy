@@ -1,51 +1,45 @@
 import axios from "axios";
 import { Check, ChevronRight, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react"; // Garder useEffect pour la logique interne de la page si besoin
 import { useNavigate } from "react-router-dom";
+import LoadingScreen from "../components/LoadingScreen.jsx";
+import { useAuth } from "../context/AuthContext.jsx"; // Importer useAuth
 
 const OnboardingPage = () => {
   const navigate = useNavigate();
+  const {
+    user,
+    isLoading: authLoading,
+    fetchAuthStatus, // Utiliser fetchAuthStatus pour rafraîchir l'état global
+  } = useAuth();
+
   const [currentStep, setCurrentStep] = useState(1);
   const [newIcalLink, setNewIcalLink] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState(null);
+  const [pageLoading, setPageLoading] = useState(false); // Chargement spécifique à la soumission du formulaire
 
-  useEffect(() => {
-    // Récupérer l'utilisateur pour afficher son nom par exemple
-    const fetchUser = async () => {
-      try {
-        const response = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/me`,
-          { withCredentials: true }
-        );
-        setUser(response.data.user);
-      } catch (error) {
-        console.error(
-          "Erreur lors de la récupération de l'utilisateur :",
-          error
-        );
-        navigate("/"); // Rediriger si l'utilisateur n'est pas récupérable
-      }
-    };
-    fetchUser();
-  }, [navigate]);
+  // Pas besoin de fetchUser ici, car AuthContext le fournit.
 
   const handleUploadIcalLink = async () => {
     setErrorMessage("");
     setSuccessMessage("");
-    setLoading(true);
+    setPageLoading(true);
     try {
       await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/calendar`,
         { icalLink: newIcalLink },
         { withCredentials: true }
       );
+      // Ne plus appeler updateIcalLinkLocal
       setSuccessMessage("Lien iCal enregistré avec succès ! Redirection...");
+      // Rafraîchir l'état d'authentification et hasIcal depuis le backend
+      await fetchAuthStatus();
+      // La redirection sera gérée par ProtectedRoute ou le useEffect de cette page si hasIcal change
+      // Ou on peut garder la redirection explicite si fetchAuthStatus met à jour l'état assez rapidement
       setTimeout(() => {
-        navigate("/app/calendar");
-      }, 2000);
+        navigate("/app/calendar", { replace: true });
+      }, 1500); // Le délai peut être ajusté ou la redirection peut dépendre de la mise à jour de hasIcal
     } catch (error) {
       console.error("Erreur lors de l'upload du icalLink :", error);
       setErrorMessage(
@@ -53,13 +47,13 @@ const OnboardingPage = () => {
           "Ce n'est pas un lien iCal valide 😖. Assurez-vous que le lien est correct et réessayez."
       );
     } finally {
-      setLoading(false);
+      setPageLoading(false);
     }
   };
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
-      if (currentStep === 2 && newIcalLink) {
+      if (currentStep === 2 && newIcalLink && !pageLoading && !successMessage) {
         handleUploadIcalLink();
       }
     }
@@ -68,17 +62,28 @@ const OnboardingPage = () => {
   const nextStep = () => {
     if (currentStep === 1) {
       setCurrentStep(2);
-    } else if (currentStep === 2 && newIcalLink) {
+    } else if (
+      currentStep === 2 &&
+      newIcalLink &&
+      !pageLoading &&
+      !successMessage
+    ) {
       handleUploadIcalLink();
     }
   };
 
+  if (authLoading) {
+    return <LoadingScreen />;
+  }
+
+  // Si l'utilisateur n'est pas disponible après le chargement du contexte,
+  // cela pourrait indiquer un problème ou qu'il n'est pas authentifié.
+  // ProtectedRoute devrait déjà gérer la redirection des non-authentifiés.
   if (!user) {
-    return (
-      <div className="flex justify-center items-center h-screen bg-base-100">
-        <span className="loading loading-spinner loading-lg"></span>
-      </div>
-    );
+    // Normalement, ProtectedRoute devrait avoir redirigé.
+    // Si on arrive ici, c'est un état inattendu, ou l'utilisateur vient de se déconnecter.
+    // Afficher un chargement ou rediriger peut être une option.
+    return <LoadingScreen />;
   }
 
   return (
@@ -138,7 +143,7 @@ const OnboardingPage = () => {
                   setSuccessMessage("");
                 }}
                 onKeyDown={handleKeyDown}
-                disabled={loading}
+                disabled={pageLoading || !!successMessage}
               />
             </div>
             {errorMessage && (
@@ -156,9 +161,9 @@ const OnboardingPage = () => {
             <button
               className="btn btn-primary btn-block"
               onClick={handleUploadIcalLink}
-              disabled={!newIcalLink || loading || !!successMessage}
+              disabled={!newIcalLink || pageLoading || !!successMessage}
             >
-              {loading ? (
+              {pageLoading ? (
                 <span className="loading loading-spinner loading-sm"></span>
               ) : (
                 "Enregistrer et Terminer"

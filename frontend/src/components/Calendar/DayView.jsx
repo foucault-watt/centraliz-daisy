@@ -15,28 +15,49 @@ function EventCard({ event, style }) {
     zone: "Europe/Paris",
   }).toFormat("HH:mm");
 
-  // Déterminer la couleur en fonction de l'importance de l'événement
-  const eventColor =
-    event.id === "TNE"
-      ? "bg-info text-info-content"
-      : event.id === "CB"
-      ? "bg-error text-error-content"
-      : "bg-primary text-primary-content";
+  const eventColorClass =
+    event.className || "bg-primary text-primary-content border-primary";
+
+  const tooltipContent = [
+    `${event.name} (${startTime} - ${endTime})`,
+    event.prof !== "N/A" ? `Prof: ${event.prof}` : null,
+    event.room ? `Salle: ${event.room}` : null,
+    event.description ? `Desc: ${event.description}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return (
     <div
-      className={`card card-compact ${eventColor} shadow-md p-2 mb-0.5`} // mb-0.5 au lieu de mb-1
-      style={{ ...style, position: "absolute", zIndex: 10 }} // Positionnement absolu
+      className="tooltip tooltip-fixed w-full z-[50]"
+      data-tip={tooltipContent}
+      style={{ ...style, position: "absolute", zIndex: 10 }}
     >
-      <p className="font-semibold text-xs">{event.name}</p>
-      <p className="text-xs opacity-80">
-        {startTime} - {endTime}
-      </p>
-      {event.description && (
-        <p className="text-xs opacity-70 mt-0.5 truncate">
-          {event.description}
-        </p>
-      )}
+      <div
+        className={`card card-compact ${eventColorClass} shadow-lg p-3 w-full h-full overflow-hidden flex flex-col justify-center items-center text-center rounded-xl`}
+      >
+        {/* Main content: Name and Room */}
+        <div className="w-full flex flex-col items-center">
+          <div
+            className="font-extrabold text-xl sm:text-2xl leading-tight break-words text-white"
+            style={{ textShadow: "2px 2px 4px rgba(0,0,0,0.3)" }}
+          >
+            {event.name}
+          </div>
+          {event.room && (
+            <div className="badge badge-sm badge-ghost mt-1 px-2 opacity-70">
+              {event.room}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom content: Professor */}
+        <div className="w-full mt-3 text-sm sm:text-base opacity-80 space-y-1 text-white">
+          {event.prof !== "N/A" && (
+            <p className="italic truncate">{event.prof}</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -94,14 +115,14 @@ function DayView({ currentDate, events }) {
             {/* Événements */}
             {laidOutEvents.map(({ event: ev, top, height, left, width }) => (
               <EventCard
-                key={ev.id}
+                key={ev.id} // Assurez-vous que ev.id est unique
                 event={ev}
                 style={{
                   top: `${top}px`,
                   height: `${height}px`,
                   left: `${left}%`,
-                  width: `calc(${width}% - 4px)`, // -4px pour espacement
-                  marginLeft: "2px",
+                  width: `calc(${width}% - 4px)`, // Augmentation du margin horizontal
+                  marginLeft: "2px", // Augmentation légère
                 }}
               />
             ))}

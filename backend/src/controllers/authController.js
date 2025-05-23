@@ -73,12 +73,12 @@ export const callback = async (req, res) => {
         .send("Utilisateur non trouvé après validation CAS.");
     }
 
-    // Vérification et insertion dans la table users
+    let userToUse; // Vérification et insertion dans la table users
     const { data: existingUser, error: fetchError } = await supabase
       .from("users")
-      .select("*")
+      .select("userName, displayName, icalLink, isAdmin, group") // Ajouter group ici
       .eq("userName", userName)
-      .maybeSingle(); // Utilisation de maybeSingle pour éviter l'erreur si aucune ligne n'est trouvée
+      .maybeSingle();
 
     if (fetchError) {
       console.error(
@@ -90,9 +90,11 @@ export const callback = async (req, res) => {
 
     if (!existingUser) {
       console.log("Utilisateur non trouvé, insertion dans la table users.");
-      const { error: insertError } = await supabase
+      const { data: newUser, error: insertError } = await supabase
         .from("users")
-        .insert({ userName, displayName });
+        .insert({ userName, displayName }) // icalLink, isAdmin et group seront null/default par défaut
+        .select("userName, displayName, icalLink, isAdmin, group") // Ajouter group ici
+        .single();
 
       if (insertError) {
         console.error(
@@ -101,13 +103,30 @@ export const callback = async (req, res) => {
         );
         return res.status(500).send("Erreur interne du serveur");
       }
+      userToUse = newUser;
     } else {
       console.log("Utilisateur déjà existant :", existingUser);
+      userToUse = existingUser;
     }
-
-    req.session.user = { userName, displayName };
+    req.session.user = {
+      userName: userToUse.userName,
+      displayName: userToUse.displayName,
+      hasIcal: !!userToUse.icalLink, // Convertir en booléen
+      isAdmin: !!userToUse.isAdmin, // Ajouter isAdmin et convertir en booléen
+      group: userToUse.group, // Ajouter le group ici
+    };
     console.log("Session utilisateur créée :", req.session.user);
-    res.redirect(`${process.env.FRONT_URL}/auth`);
+
+    // Redirection basée sur la présence du lien iCal
+    if (userToUse.icalLink) {
+      console.log("Utilisateur a un iCalLink, redirection vers /app/calendar");
+      res.redirect(`${process.env.FRONT_URL}/app/calendar`);
+    } else {
+      console.log(
+        "Utilisateur n'a pas d'iCalLink, redirection vers /onboarding"
+      );
+      res.redirect(`${process.env.FRONT_URL}/onboarding`);
+    }
   } catch (e) {
     console.error("Erreur inattendue lors de la validation CAS :", e);
     res.status(500).send("Erreur lors de la validation CAS");
