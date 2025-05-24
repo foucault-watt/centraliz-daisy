@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { configService } from "../../services/configService.js";
+import { downloadNotes } from "../../services/notesService.js";
 import {
   calculateGeneralAverage,
   organizeModulesByUE,
@@ -20,6 +21,9 @@ const NotesPage = () => {
 
   // Nouvel état pour suivre quel module est en cours de simulation directement dans l'interface
   const [simulations, setSimulations] = useState({});
+  // Nouveaux états pour la récupération backend
+  const [password, setPassword] = useState("");
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const parseCSV = (csvText) => {
     const lines = csvText.trim().split("\n");
@@ -421,6 +425,49 @@ const NotesPage = () => {
 
       return newData;
     });
+  }; // Fonction pour télécharger les notes depuis le backend
+  const handleDownloadNotes = async () => {
+    if (!password.trim()) {
+      setError("Veuillez entrer votre mot de passe");
+      return;
+    }
+
+    setIsDownloading(true);
+    setError("");
+    setProcessedData(null);
+    setOrganizedData(null);
+    setCoefficientsError("");
+
+    try {
+      const response = await downloadNotes(password);
+
+      if (response.success && response.csvContent) {
+        // Parser le contenu CSV reçu du backend
+        const parsed = parseCSV(response.csvContent);
+        setProcessedData(parsed); // Charger les coefficients après le traitement du CSV
+        await loadCoefficientsAndOrganize(parsed);
+        setPassword("");
+      } else {
+        setError("Aucune donnée de notes reçue");
+      }
+    } catch (err) {
+      console.error("Erreur lors du téléchargement des notes:", err);
+      setError(err.message || "Erreur lors du téléchargement des notes");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+  // Fonction utilitaire pour obtenir la couleur selon la note
+  const getGradeColor = (grade) => {
+    if (grade >= 10) return "text-green-600";
+    if (grade >= 7) return "text-orange-500";
+    return "text-red-600";
+  };
+
+  const getGradeBgColor = (grade) => {
+    if (grade >= 10) return "bg-green-100 border-green-300";
+    if (grade >= 7) return "bg-orange-100 border-orange-300";
+    return "bg-red-100 border-red-300";
   };
 
   return (
@@ -429,36 +476,106 @@ const NotesPage = () => {
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold mb-2">Calculateur de moyennes</h1>
         <p className="text-base-content/70">
-          Importez votre fichier de notes CSV pour calculer vos moyennes par
-          module
+          Récupérez automatiquement vos notes ou importez votre fichier CSV
         </p>
       </div>
-      {/* Zone d'importation de fichier simplifiée */}
-      <div className="flex flex-col items-center justify-center mb-10">
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileInputChange}
-          accept=".csv"
-          className="hidden"
-        />
+      {/* Zone de récupération automatique des notes - PRINCIPAL */}
+      <div className="flex flex-col items-center justify-center mb-8">
+        <div className="card bg-base-100 shadow-lg max-w-md w-full">
+          <div className="card-body">
+            <h3 className="card-title justify-center mb-4 text-primary">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6 mr-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              Récupération automatique
+            </h3>
+            <p className="text-sm text-base-content/70 mb-4 text-center">
+              Entrez votre mot de passe Centrale pour récupérer automatiquement
+              vos notes
+            </p>
 
-        <div
-          className={`w-full max-w-lg h-40 flex flex-col items-center justify-center 
-                    border-2 border-dashed rounded-xl cursor-pointer transition-all
-                    ${
-                      isDragging
-                        ? "border-primary bg-primary/10"
-                        : "border-base-300 hover:bg-base-200 hover:border-primary/50"
-                    }`}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={triggerFileInput}
-        >
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Mot de passe</span>
+              </label>
+              <input
+                type="password"
+                className="input input-bordered"
+                placeholder="Votre mot de passe Centrale"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && password.trim()) {
+                    handleDownloadNotes();
+                  }
+                }}
+                disabled={isDownloading}
+              />
+            </div>
+
+            <div className="card-actions justify-center mt-4">
+              <button
+                className="btn btn-primary btn-wide"
+                onClick={handleDownloadNotes}
+                disabled={!password.trim() || isDownloading}
+              >
+                {isDownloading ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    Récupération...
+                  </>
+                ) : (
+                  "Récupérer mes notes"
+                )}
+              </button>
+            </div>
+
+            <div className="alert alert-info mt-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                className="stroke-current shrink-0 w-6 h-6"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <span className="text-sm">
+                Votre mot de passe n'est pas stocké et est uniquement utilisé
+                pour vous connecter à Aurion.
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Séparateur avec "OU" */}
+      <div className="flex items-center justify-center mb-6">
+        <div className="border-t border-base-300 flex-grow mr-3"></div>
+        <span className="text-base-content/60 px-3 font-medium">OU</span>
+        <div className="border-t border-base-300 flex-grow ml-3"></div>
+      </div>
+      {/* Zone d'importation de fichier - SECONDAIRE */}
+      <div className="collapse collapse-arrow bg-base-200 mb-8">
+        <input type="checkbox" />
+        <div className="collapse-title text-center font-medium">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-10 w-10 text-base-content/60 mb-2"
+            className="h-5 w-5 inline mr-2"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -470,10 +587,50 @@ const NotesPage = () => {
               d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
             />
           </svg>
-          <p className="font-medium">Déposer un fichier CSV ici</p>
-          <p className="text-sm text-base-content/60 mt-1">
-            ou cliquer pour parcourir
-          </p>
+          Import manuel d'un fichier CSV
+        </div>
+        <div className="collapse-content">
+          <div className="flex flex-col items-center justify-center pt-4">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileInputChange}
+              accept=".csv"
+              className="hidden"
+            />
+            <div
+              className={`w-full max-w-lg h-32 flex flex-col items-center justify-center 
+                        border-2 border-dashed rounded-xl cursor-pointer transition-all
+                        ${
+                          isDragging
+                            ? "border-primary bg-primary/10"
+                            : "border-base-300 hover:bg-base-200 hover:border-primary/50"
+                        }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={triggerFileInput}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-8 w-8 text-base-content/60 mb-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                />
+              </svg>
+              <p className="font-medium text-sm">Déposer un fichier CSV ici</p>
+              <p className="text-xs text-base-content/60 mt-1">
+                ou cliquer pour parcourir
+              </p>
+            </div>
+          </div>
         </div>
       </div>
       {/* Message d'erreur */}
@@ -530,19 +687,29 @@ const NotesPage = () => {
       {/* Affichage organisé par UE */}
       {organizedData && !organizedData.error && (
         <div className="mt-8">
+          {" "}
           {/* Moyenne générale */}
-          <div className="card bg-primary text-primary-content shadow-lg mb-6 mx-auto max-w-md">
+          <div
+            className={`card shadow-lg mb-6 mx-auto max-w-md border-2 ${getGradeBgColor(
+              calculateGeneralAverage(organizedData.organizedUEs)
+            )}`}
+          >
             <div className="card-body text-center">
-              <h2 className="card-title justify-center">Moyenne Générale</h2>
-              <div className="text-4xl font-bold">
+              <h2 className="card-title justify-center text-base-content">
+                Moyenne Générale
+              </h2>
+              <div
+                className={`text-4xl font-bold ${getGradeColor(
+                  calculateGeneralAverage(organizedData.organizedUEs)
+                )}`}
+              >
                 {calculateGeneralAverage(organizedData.organizedUEs).toFixed(2)}
               </div>
-              <p className="text-sm opacity-80">
+              <p className="text-sm text-base-content/70">
                 Groupe: {organizedData.userGroup}
               </p>
             </div>
           </div>
-
           {/* Affichage par UE */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {Object.entries(organizedData.organizedUEs).map(
@@ -550,12 +717,16 @@ const NotesPage = () => {
                 <div key={ueName} className="card bg-base-100 shadow-lg">
                   <div className="card-body">
                     <div className="flex justify-between items-center mb-4">
-                      <h3 className="card-title text-lg">{ueName}</h3>
+                      <h3 className="card-title text-lg">{ueName}</h3>{" "}
                       <div className="flex items-center gap-2">
                         <span className="badge badge-outline">
                           Coef. {ueData.coef}
                         </span>
-                        <div className="badge badge-lg badge-secondary font-semibold">
+                        <div
+                          className={`badge badge-lg font-semibold border-2 ${getGradeBgColor(
+                            ueData.average
+                          )} ${getGradeColor(ueData.average)}`}
+                        >
                           {ueData.average.toFixed(2)}
                         </div>
                       </div>
@@ -571,12 +742,16 @@ const NotesPage = () => {
                           >
                             <input type="checkbox" />
                             <div className="collapse-title flex justify-between items-center">
-                              <span className="font-medium">{moduleName}</span>
+                              <span className="font-medium">{moduleName}</span>{" "}
                               <div className="flex items-center gap-2">
                                 <span className="badge badge-outline badge-xs">
                                   Coef. {moduleData.enseignementCoef}
                                 </span>
-                                <span className="badge badge-accent">
+                                <span
+                                  className={`badge font-semibold border-2 ${getGradeBgColor(
+                                    moduleData.average
+                                  )} ${getGradeColor(moduleData.average)}`}
+                                >
                                   {moduleData.average.toFixed(2)}
                                 </span>
                               </div>
@@ -595,6 +770,7 @@ const NotesPage = () => {
                                     </tr>
                                   </thead>
                                   <tbody>
+                                    {" "}
                                     {moduleData.notes.map((note) => (
                                       <tr
                                         key={note.id}
@@ -628,14 +804,18 @@ const NotesPage = () => {
                                           </div>
                                         </td>
                                         <td>
-                                          <span
-                                            className="truncate max-w-[100px] text-xs"
+                                          <div
+                                            className="max-w-[120px] max-h-12 overflow-y-auto text-xs pr-1 scrollbar-thin scrollbar-thumb-base-300 scrollbar-track-transparent"
                                             title={note.detailControle}
                                           >
                                             {note.detailControle}
-                                          </span>
+                                          </div>
                                         </td>
-                                        <td className="text-right">
+                                        <td
+                                          className={`text-right font-medium ${getGradeColor(
+                                            note.note
+                                          )}`}
+                                        >
                                           {note.note.toFixed(2)}
                                         </td>
                                         <td className="text-right">
@@ -785,7 +965,6 @@ const NotesPage = () => {
               )
             )}
           </div>
-
           {/* Modules non mappés */}
           {Object.keys(organizedData.unmappedModules).length > 0 && (
             <div className="mt-8">
@@ -821,15 +1000,19 @@ const NotesPage = () => {
                       className="card bg-base-100 shadow-lg border border-warning"
                     >
                       <div className="card-body p-4">
+                        {" "}
                         <div className="flex justify-between items-center mb-3">
                           <h3 className="card-title text-lg">{moduleName}</h3>
-                          <div className="badge badge-lg badge-warning font-semibold">
+                          <div
+                            className={`badge badge-lg font-semibold border-2 ${getGradeBgColor(
+                              data.average
+                            )} ${getGradeColor(data.average)}`}
+                          >
                             {data.average !== undefined
                               ? data.average.toFixed(2)
                               : "N/A"}
                           </div>
                         </div>
-
                         <div className="overflow-x-auto max-h-48 mb-4">
                           <table className="table table-xs table-zebra w-full">
                             <thead>
@@ -871,16 +1054,20 @@ const NotesPage = () => {
                                         {note.epreuveName}
                                       </span>
                                     </div>
-                                  </td>
+                                  </td>{" "}
                                   <td>
-                                    <span
-                                      className="truncate max-w-[100px] text-xs"
+                                    <div
+                                      className="max-w-[120px] max-h-12 overflow-y-auto text-xs pr-1 scrollbar-thin scrollbar-thumb-base-300 scrollbar-track-transparent"
                                       title={note.detailControle}
                                     >
                                       {note.detailControle}
-                                    </span>
+                                    </div>
                                   </td>
-                                  <td className="text-right">
+                                  <td
+                                    className={`text-right font-medium ${getGradeColor(
+                                      note.note
+                                    )}`}
+                                  >
                                     {note.note.toFixed(2)}
                                   </td>
                                   <td className="text-right">
@@ -925,7 +1112,6 @@ const NotesPage = () => {
                             </tbody>
                           </table>
                         </div>
-
                         {/* Zone de simulation */}
                         <div className="bg-base-200 p-3 rounded-box mt-1">
                           <div className="flex items-center justify-between mb-2">
@@ -1049,16 +1235,20 @@ const NotesPage = () => {
                 return (
                   <div key={moduleName} className="card bg-base-100 shadow-lg">
                     <div className="card-body p-4">
+                      {" "}
                       {/* En-tête de la carte avec nom du module et moyenne */}
                       <div className="flex justify-between items-center mb-3">
                         <h3 className="card-title text-lg">{moduleName}</h3>
-                        <div className="badge badge-lg badge-primary font-semibold">
+                        <div
+                          className={`badge badge-lg font-semibold border-2 ${getGradeBgColor(
+                            data.average
+                          )} ${getGradeColor(data.average)}`}
+                        >
                           {data.average !== undefined
                             ? data.average.toFixed(2)
                             : "N/A"}
                         </div>
                       </div>
-
                       {/* Tableau des notes */}
                       <div className="overflow-x-auto max-h-48 mb-4">
                         <table className="table table-xs table-zebra w-full">
@@ -1099,16 +1289,20 @@ const NotesPage = () => {
                                       {n.epreuveName}
                                     </span>
                                   </div>
-                                </td>
+                                </td>{" "}
                                 <td>
-                                  <span
-                                    className="truncate max-w-[100px] text-xs"
+                                  <div
+                                    className="max-w-[120px] max-h-12 overflow-y-auto text-xs pr-1 scrollbar-thin scrollbar-thumb-base-300 scrollbar-track-transparent"
                                     title={n.detailControle}
                                   >
                                     {n.detailControle}
-                                  </span>
+                                  </div>
                                 </td>
-                                <td className="text-right">
+                                <td
+                                  className={`text-right font-medium ${getGradeColor(
+                                    n.note
+                                  )}`}
+                                >
                                   {n.note.toFixed(2)}
                                 </td>
                                 <td className="text-right">
@@ -1198,7 +1392,6 @@ const NotesPage = () => {
                           </tbody>
                         </table>
                       </div>
-
                       {/* Zone de simulation intégrée */}
                       <div className="bg-base-200 p-3 rounded-box mt-1">
                         <div className="flex items-center justify-between mb-2">
