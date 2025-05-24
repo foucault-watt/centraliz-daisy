@@ -11,6 +11,7 @@ import authRoutes from "./routes/authRoutes.js";
 import calendarRoutes from "./routes/calendarRoutes.js"; // Ajout de l'import
 import configRoutes from "./routes/configRoutes.js"; // Import des routes de config
 import logRoutes from "./routes/logRoutes.js"; // Import des routes de logs
+import sessionRoutes from "./routes/sessionRoutes.js"; // Import des routes de sessions
 import userRoutes from "./routes/userRoutes.js";
 import logger from "./utils/logger.js";
 
@@ -43,6 +44,7 @@ app.use("/api/events", calendarRoutes); // Nouvelles routes pour les données d'
 app.use("/api/config", configRoutes); // Routes pour la configuration
 app.use("/api/admin", adminRoutes); // Routes d'administration
 app.use("/api/admin/logs", logRoutes); // Routes pour les logs
+app.use("/api/sessions", sessionRoutes); // Routes pour la gestion des sessions
 
 // Route de test pour crash du serveur (à utiliser avec précaution)
 app.use(`/api/${process.env.SECRET_API}/crash`, async (req, res) => {

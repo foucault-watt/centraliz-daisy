@@ -2,12 +2,29 @@ import axios from "axios";
 import dotenv from "dotenv";
 import supabase from "../config/supabase.js";
 import { extractFromCasXml } from "../utils/parseCasResponse.js";
+import { createRememberToken } from "./rememberTokenController.js";
 dotenv.config();
 
 const casBaseURL = process.env.CAS_URL;
 const serviceURL = `${process.env.SERVICE_URL}/api/auth/callback`;
 
 export const login = (req, res) => {
+  // Vérifier si l'utilisateur a déjà une session valide via remember token
+  if (req.session && req.session.user) {
+    console.log("Utilisateur déjà connecté via session/remember token");
+    // Rediriger en fonction du statut de l'utilisateur
+    if (req.session.user.hasIcal) {
+      return res.redirect(`${process.env.FRONT_URL}/app/calendar`);
+    } else {
+      return res.redirect(`${process.env.FRONT_URL}/onboarding`);
+    }
+  }
+
+  // Stocker le paramètre remember dans la session pour le récupérer au callback
+  const rememberMe = req.query.remember === "true";
+  req.session.rememberMe = rememberMe;
+
+  // L'URL de service CAS ne doit pas contenir de paramètres supplémentaires
   const loginUrl = `${casBaseURL}/login?service=${encodeURIComponent(
     serviceURL
   )}`;
@@ -115,7 +132,23 @@ export const callback = async (req, res) => {
       isAdmin: !!userToUse.isAdmin, // Ajouter isAdmin et convertir en booléen
       group: userToUse.group, // Ajouter le group ici
     };
-    console.log("Session utilisateur créée :", req.session.user);
+    console.log("Session utilisateur créée :", req.session.user); // Créer un remember token si demandé (récupéré depuis la session)
+    const rememberMe = req.session.rememberMe;
+    if (rememberMe) {
+      const token = await createRememberToken(userToUse.userName, req);
+      if (token) {
+        res.cookie("remember_token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 30 * 24 * 60 * 60 * 1000, // 30 jours
+        });
+        console.log("Remember token créé et cookie défini");
+      }
+    }
+    // Nettoyer les paramètres temporaires de la session
+    delete req.session.rememberMe;
+    delete req.session.deviceInfo; // Nettoyer aussi les infos de l'appareil
 
     // Redirection basée sur la présence du lien iCal
     if (userToUse.icalLink) {

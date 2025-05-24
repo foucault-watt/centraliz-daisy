@@ -1,12 +1,46 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Logo from "../assets/Logo.jsx";
 import LoadingScreen from "../components/LoadingScreen.jsx";
 import { useAuth } from "../context/AuthContext.jsx"; // Importer useAuth
+import { getCustomHeaders } from "../utils/deviceInfo.js";
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const { user, hasIcal, isAuthenticated, isLoading } = useAuth(); // Utiliser hasIcal
+  const [rememberMe, setRememberMe] = useState(true);
+
+  // Fonction pour gérer la connexion avec envoi des informations de l'appareil
+  const handleLogin = async () => {
+    try {
+      // Envoyer les informations de l'appareil au serveur avant la redirection
+      const headers = getCustomHeaders();
+
+      // Faire une requête pour enregistrer les informations de l'appareil
+      await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/device-info`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...headers,
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          remember: rememberMe,
+          deviceInfo: headers,
+        }),
+      });
+    } catch (error) {
+      console.warn(
+        "Impossible d'envoyer les informations de l'appareil:",
+        error
+      );
+    }
+
+    // Rediriger vers CAS
+    window.location.href = `${
+      import.meta.env.VITE_BACKEND_URL
+    }/api/auth/login?remember=${rememberMe}`;
+  };
 
   useEffect(() => {
     if (!isLoading) {
@@ -41,17 +75,27 @@ const LandingPage = () => {
               <Logo />
             </div>
           </div>
-          <h1 className="text-5xl font-bold">Bienvenue sur Centraliz</h1>
+          <h1 className="text-5xl font-bold">Bienvenue sur Centraliz</h1>{" "}
           <p className="py-6">
             Centraliz vous aide à organiser vos calendriers et bien plus encore.
             Connectez-vous pour commencer !
-          </p>
-          <a
-            href={`${import.meta.env.VITE_BACKEND_URL}/api/auth/login`}
-            className="btn btn-primary btn-lg"
-          >
+          </p>{" "}
+          <div className="form-control mb-6">
+            <label className="label cursor-pointer justify-center">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="checkbox checkbox-primary mr-2"
+              />
+              <span className="label-text">
+                Se souvenir de moi pendant 30 jours
+              </span>
+            </label>
+          </div>
+          <button onClick={handleLogin} className="btn btn-primary btn-lg">
             Se connecter / S'inscrire
-          </a>
+          </button>
         </div>
       </div>
     </div>

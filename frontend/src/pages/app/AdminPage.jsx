@@ -1,6 +1,7 @@
 import axios from "axios";
 import { AlertCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import AdminSessionsManager from "../../components/admin/AdminSessionsManager";
 import ConfigManager from "../../components/admin/ConfigManager";
 import JsonEditor from "../../components/admin/JsonEditor";
 import LogViewer from "../../components/admin/LogViewer";
@@ -220,6 +221,13 @@ const AdminPage = () => {
         >
           Coefficients
         </button>
+        <button
+          role="tab"
+          className={`tab ${activeTab === "sessions" ? "tab-active" : ""}`}
+          onClick={() => setActiveTab("sessions")}
+        >
+          Sessions
+        </button>
       </div>
 
       <div className="mt-8 p-6 bg-base-100 rounded-box shadow-xl">
@@ -370,6 +378,14 @@ const AdminPage = () => {
                 onSave={handleSaveCoefficients}
               />
             )}
+          </div>
+        )}
+        {activeTab === "sessions" && (
+          <div>
+            <h2 className="text-2xl font-semibold mb-4 text-accent">
+              Gestion des Sessions
+            </h2>
+            <AdminSessionsManager />
           </div>
         )}
       </div>

@@ -16,6 +16,7 @@ import AdminPage from "../pages/app/AdminPage.jsx";
 import BibliPage from "../pages/app/BibliPage.jsx";
 import CalendarPage from "../pages/app/CalendarPage.jsx";
 import NotesPage from "../pages/app/NotesPage.jsx";
+import SettingsPage from "../pages/app/SettingsPage.jsx";
 
 const tabsData = [
   {
@@ -91,9 +92,7 @@ const Layout = () => {
           <Logo />
         </div>
         <div className="flex-1">
-          <a className="btn btn-ghost text-xl normal-case">
-            Centraliz {user?.displayName && `(${user.displayName})`}
-          </a>
+          <a className="btn btn-ghost text-xl normal-case">Centraliz</a>
         </div>
         <div className="flex-none">
           <div className="dropdown dropdown-hover dropdown-end">
@@ -120,7 +119,7 @@ const Layout = () => {
               )}
               <div className="divider my-1"></div>
               <li>
-                <a>
+                <a onClick={() => navigate("/app/settings")}>
                   <Settings size={18} />
                   Paramètres
                 </a>
@@ -155,6 +154,8 @@ const Layout = () => {
       <div className="container mx-auto p-4">
         {location.pathname === "/app/admin" ? (
           <AdminPage />
+        ) : location.pathname === "/app/settings" ? (
+          <SettingsPage />
         ) : (
           <div role="tablist" className="tabs tabs-lifted">
             {tabsData.map((tab) => (
