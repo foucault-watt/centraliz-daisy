@@ -92,7 +92,12 @@ const Layout = () => {
           <Logo />
         </div>
         <div className="flex-1">
-          <a className="btn btn-ghost text-xl normal-case">Centraliz</a>
+          <button
+            className="btn btn-ghost text-xl normal-case"
+            onClick={() => navigate("/app/calendar")}
+          >
+            Centraliz
+          </button>
         </div>
         <div className="flex-none">
           <div className="dropdown dropdown-hover dropdown-end">
