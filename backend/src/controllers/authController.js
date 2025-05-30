@@ -1,22 +1,64 @@
+/**
+ * Contrôleur d'authentification CAS
+ *
+ * Gère le processus d'authentification via CAS (Central Authentication Service) :
+ * - Vérification des sessions existantes
+ * - Redirection vers CAS pour l'authentification
+ * - Traitement du callback après authentification
+ * - Gestion des tokens de "remember me"
+ */
+
 import axios from "axios";
 import dotenv from "dotenv";
 import supabase from "../config/supabase.js";
+import logger from "../utils/logger.js";
 import { extractFromCasXml } from "../utils/parseCasResponse.js";
+import {
+  cleanupCorruptedSession,
+  validateSessionUser,
+} from "../utils/sessionValidator.js";
 import { createRememberToken } from "./rememberTokenController.js";
+
 dotenv.config();
 
 const casBaseURL = process.env.CAS_URL;
 const serviceURL = `${process.env.SERVICE_URL}/api/auth/callback`;
 
-export const login = (req, res) => {
-  // Vérifier si l'utilisateur a déjà une session valide via remember token
+/**
+ * Point d'entrée pour l'authentification
+ *
+ * Vérifie d'abord si l'utilisateur a déjà une session valide.
+ * Si oui, redirige directement selon son statut (calendar/onboarding).
+ * Si non, redirige vers CAS pour l'authentification.
+ */
+export const login = async (req, res) => {
+  // Vérifier si l'utilisateur a déjà une session valide
   if (req.session && req.session.user) {
-    console.log("Utilisateur déjà connecté via session/remember token");
-    // Rediriger en fonction du statut de l'utilisateur
-    if (req.session.user.hasIcal) {
-      return res.redirect(`${process.env.FRONT_URL}/app/calendar`);
+    logger.info("Session existante détectée, validation en cours", {
+      userName: req.session.user.userName,
+    });
+
+    // Validation robuste de la session avec vérification en base
+    const isValidSession = await validateSessionUser(req.session.user);
+
+    if (isValidSession) {
+      logger.info("Session valide, redirection basée sur le statut", {
+        userName: req.session.user.userName,
+        hasIcal: req.session.user.hasIcal,
+      });
+
+      // Rediriger en fonction du statut de l'utilisateur
+      if (req.session.user.hasIcal) {
+        return res.redirect(`${process.env.FRONT_URL}/app/calendar`);
+      } else {
+        return res.redirect(`${process.env.FRONT_URL}/onboarding`);
+      }
     } else {
-      return res.redirect(`${process.env.FRONT_URL}/onboarding`);
+      // Session corrompue, la nettoyer et continuer vers CAS
+      logger.warn(
+        "Session corrompue détectée, nettoyage et redirection vers CAS"
+      );
+      cleanupCorruptedSession(req, res);
     }
   }
 
@@ -24,33 +66,45 @@ export const login = (req, res) => {
   const rememberMe = req.query.remember === "true";
   req.session.rememberMe = rememberMe;
 
-  // L'URL de service CAS ne doit pas contenir de paramètres supplémentaires
+  // Redirection vers CAS avec l'URL de service appropriée
   const loginUrl = `${casBaseURL}/login?service=${encodeURIComponent(
     serviceURL
   )}`;
   res.redirect(loginUrl);
 };
 
+/**
+ * Traitement du callback après authentification CAS
+ *
+ * Processus :
+ * 1. Validation du ticket CAS reçu
+ * 2. Extraction des informations utilisateur depuis la réponse CAS
+ * 3. Vérification/création de l'utilisateur en base de données
+ * 4. Création de la session utilisateur
+ * 5. Gestion du token "remember me" si activé
+ * 6. Redirection selon le statut utilisateur
+ */
 export const callback = async (req, res) => {
   const { ticket } = req.query;
   if (!ticket) {
-    console.error("Ticket manquant dans la requête.");
+    console.error("Ticket CAS manquant dans la requête de callback");
     return res.status(400).send("Ticket manquant");
   }
 
   try {
+    // Validation du ticket auprès du serveur CAS
     const validateUrl = `${casBaseURL}/p3/serviceValidate?service=${encodeURIComponent(
       serviceURL
     )}&ticket=${ticket}`;
-    console.log("Validation CAS URL :", validateUrl);
 
     const response = await axios.get(validateUrl);
-    console.log("Réponse CAS :", response.data);
 
+    // Vérification des erreurs d'authentification CAS
     if (response.data.includes("<cas:authenticationFailure")) {
       let casErrorCode = "INCONNU";
       let casErrorMessage = "Échec de la validation du ticket CAS.";
 
+      // Extraction du code d'erreur CAS
       const codeMatch = response.data.match(
         /<cas:authenticationFailure\s+code="([^"]+)"/
       );
@@ -58,6 +112,7 @@ export const callback = async (req, res) => {
         casErrorCode = codeMatch[1];
       }
 
+      // Extraction du message d'erreur CAS
       const messageMatch = response.data.match(
         /<cas:authenticationFailure[^>]*>([\s\S]*?)<\/cas:authenticationFailure>/
       );
@@ -65,12 +120,10 @@ export const callback = async (req, res) => {
         casErrorMessage = messageMatch[1].trim();
       }
 
-      console.error(
-        "Échec de l'authentification CAS. Code:",
+      console.error("Échec de l'authentification CAS:", {
         casErrorCode,
-        "Message:",
-        casErrorMessage
-      );
+        casErrorMessage,
+      });
       return res
         .status(401)
         .send(
@@ -78,61 +131,71 @@ export const callback = async (req, res) => {
         );
     }
 
+    // Extraction des informations utilisateur depuis la réponse XML de CAS
     const { userName, displayName } = extractFromCasXml(response.data);
-    console.log("Utilisateur extrait :", { userName, displayName });
 
     if (!userName) {
-      console.error(
-        "CAS validation returned no userName, despite no explicit authenticationFailure tag."
-      );
+      console.error("Aucun userName extrait de la réponse CAS valide");
       return res
         .status(401)
         .send("Utilisateur non trouvé après validation CAS.");
     }
 
-    let userToUse; // Vérification et insertion dans la table users
+    let userToUse;
+
+    // Vérification de l'existence de l'utilisateur en base de données
     const { data: existingUser, error: fetchError } = await supabase
       .from("users")
-      .select("userName, displayName, icalLink, isAdmin, group") // Ajouter group ici
+      .select("userName, displayName, icalLink, isAdmin, group")
       .eq("userName", userName)
       .maybeSingle();
 
     if (fetchError) {
       console.error(
-        "Erreur lors de la vérification de l'utilisateur dans Supabase :",
+        "Erreur lors de la vérification de l'utilisateur en base:",
         fetchError
       );
       return res.status(500).send("Erreur interne du serveur");
     }
 
     if (!existingUser) {
-      console.log("Utilisateur non trouvé, insertion dans la table users.");
+      // Création d'un nouvel utilisateur si inexistant
+      logger.info("Création d'un nouvel utilisateur", {
+        userName,
+        displayName,
+      });
       const { data: newUser, error: insertError } = await supabase
         .from("users")
-        .insert({ userName, displayName }) // icalLink, isAdmin et group seront null/default par défaut
-        .select("userName, displayName, icalLink, isAdmin, group") // Ajouter group ici
+        .insert({ userName, displayName })
+        .select("userName, displayName, icalLink, isAdmin, group")
         .single();
 
       if (insertError) {
         console.error(
-          "Erreur lors de l'insertion de l'utilisateur dans Supabase :",
+          "Erreur lors de la création de l'utilisateur:",
           insertError
         );
         return res.status(500).send("Erreur interne du serveur");
       }
       userToUse = newUser;
     } else {
-      console.log("Utilisateur déjà existant :", existingUser);
       userToUse = existingUser;
     }
+
+    // Création de la session utilisateur avec toutes les informations nécessaires
     req.session.user = {
       userName: userToUse.userName,
       displayName: userToUse.displayName,
-      hasIcal: !!userToUse.icalLink, // Convertir en booléen
-      isAdmin: !!userToUse.isAdmin, // Ajouter isAdmin et convertir en booléen
-      group: userToUse.group, // Ajouter le group ici
+      hasIcal: !!userToUse.icalLink,
+      isAdmin: !!userToUse.isAdmin,
+      group: userToUse.group,
     };
-    console.log("Session utilisateur créée :", req.session.user); // Créer un remember token si demandé (récupéré depuis la session)
+
+    logger.info("Session utilisateur créée avec succès", {
+      userName: userToUse.userName,
+    });
+
+    // Gestion du token "remember me" si demandé
     const rememberMe = req.session.rememberMe;
     if (rememberMe) {
       const token = await createRememberToken(userToUse.userName, req);
@@ -143,25 +206,28 @@ export const callback = async (req, res) => {
           sameSite: "lax",
           maxAge: 30 * 24 * 60 * 60 * 1000, // 30 jours
         });
-        console.log("Remember token créé et cookie défini");
+        logger.info("Token remember me créé", { userName: userToUse.userName });
       }
     }
-    // Nettoyer les paramètres temporaires de la session
-    delete req.session.rememberMe;
-    delete req.session.deviceInfo; // Nettoyer aussi les infos de l'appareil
 
-    // Redirection basée sur la présence du lien iCal
+    // Nettoyage des paramètres temporaires de la session
+    delete req.session.rememberMe;
+    delete req.session.deviceInfo;
+
+    // Redirection basée sur la configuration de l'utilisateur
     if (userToUse.icalLink) {
-      console.log("Utilisateur a un iCalLink, redirection vers /app/calendar");
+      logger.info("Redirection vers le calendrier", {
+        userName: userToUse.userName,
+      });
       res.redirect(`${process.env.FRONT_URL}/app/calendar`);
     } else {
-      console.log(
-        "Utilisateur n'a pas d'iCalLink, redirection vers /onboarding"
-      );
+      logger.info("Redirection vers l'onboarding", {
+        userName: userToUse.userName,
+      });
       res.redirect(`${process.env.FRONT_URL}/onboarding`);
     }
-  } catch (e) {
-    console.error("Erreur inattendue lors de la validation CAS :", e);
+  } catch (error) {
+    console.error("Erreur inattendue lors de la validation CAS:", error);
     res.status(500).send("Erreur lors de la validation CAS");
   }
 };

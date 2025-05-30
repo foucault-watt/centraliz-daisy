@@ -3,47 +3,49 @@ import { useNavigate } from "react-router-dom";
 import LoadingScreen from "../components/LoadingScreen.jsx";
 import { useAuth } from "../context/AuthContext.jsx"; // Importer useAuth
 
-// Ce composant est la cible de redirection après le login CAS.
-// AuthContext devrait déjà avoir mis à jour l'état.
-// Cette page redirige en fonction de cet état.
+/**
+ * Page de traitement après authentification CAS
+ *
+ * Cette page est la cible de redirection après le login CAS.
+ * Elle force une mise à jour de l'état d'authentification puis redirige
+ * l'utilisateur vers la page appropriée selon son statut.
+ */
 
 const AuthPage = () => {
   const navigate = useNavigate();
-  const {
-    user,
-    hasIcal,
-    isAuthenticated,
-    isLoading,
-    fetchAuthStatus,
-  } = useAuth(); // Utiliser hasIcal
+  const { user, hasIcal, isAuthenticated, isLoading, fetchAuthStatus } =
+    useAuth();
 
+  /**
+   * Premier useEffect : Force un rafraîchissement de l'état d'authentification
+   * Nécessaire car après le callback CAS, la session backend vient d'être établie
+   * et l'état côté client doit être mis à jour
+   */
   useEffect(() => {
-    // Si AuthContext est toujours en train de charger initialement,
-    // ou si on veut forcer un rafraîchissement après le callback.
-    // Normalement, AuthContext se charge au démarrage de l'app.
-    // Un fetchAuthStatus ici pourrait être redondant si le contexte est déjà à jour.
-    // Cependant, après le callback CAS, la session backend vient d'être établie,
-    // donc un rafraîchissement de l'état client est pertinent.
     fetchAuthStatus();
   }, [fetchAuthStatus]);
 
+  /**
+   * Deuxième useEffect : Gestion des redirections selon l'état d'authentification
+   * - Authentifié avec iCal configuré → calendrier
+   * - Authentifié sans iCal → onboarding
+   * - Non authentifié → retour à l'accueil (problème d'authentification)
+   */
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated && hasIcal) {
-        // Utiliser hasIcal
         navigate("/app/calendar", { replace: true });
       } else if (isAuthenticated && !hasIcal) {
-        // Utiliser hasIcal
         navigate("/onboarding", { replace: true });
       } else if (!isAuthenticated) {
-        // Si après le callback et le fetchAuthStatus, l'utilisateur n'est toujours pas authentifié,
-        // il y a un problème. Rediriger vers la page d'accueil.
+        // Problème d'authentification, retour à l'accueil
         navigate("/", { replace: true });
       }
     }
-  }, [isLoading, isAuthenticated, user, hasIcal, navigate]); // Ajouter hasIcal aux dépendances
+  }, [isLoading, isAuthenticated, user, hasIcal, navigate]);
 
-  return <LoadingScreen />; // Afficher un écran de chargement pendant la redirection
+  // Affichage d'un écran de chargement pendant le traitement et la redirection
+  return <LoadingScreen />;
 };
 
 export default AuthPage;

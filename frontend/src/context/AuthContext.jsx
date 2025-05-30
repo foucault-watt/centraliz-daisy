@@ -1,3 +1,13 @@
+/**
+ * Contexte d'authentification global
+ *
+ * Gère l'état d'authentification de l'application :
+ * - Vérification initiale du statut de connexion
+ * - Mise à jour des informations utilisateur
+ * - Gestion de la déconnexion
+ * - Synchronisation avec le backend
+ */
+
 import axios from "axios";
 import {
   createContext,
@@ -10,20 +20,32 @@ import { useNavigate } from "react-router-dom";
 
 const AuthContext = createContext(null);
 
+// Hook personnalisé pour utiliser le contexte d'authentification
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
+  // États de l'authentification
   const [user, setUser] = useState(null);
-  const [hasIcal, setHasIcal] = useState(false); // Remplacer icalLink par hasIcal
-  const [isAdmin, setIsAdmin] = useState(false); // Ajouter l'état pour l'admin
-  const [userGroup, setUserGroup] = useState(null); // Ajouter l'état pour le groupe de l'utilisateur
+  const [hasIcal, setHasIcal] = useState(false); // Configuration calendrier
+  const [isAdmin, setIsAdmin] = useState(false); // Droits administrateur
+  const [userGroup, setUserGroup] = useState(null); // Groupe d'appartenance
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-
+  /**
+   * Fonction pour récupérer le statut d'authentification depuis le backend
+   *
+   * Met à jour tous les états d'authentification :
+   * - user : informations utilisateur complètes
+   * - isAuthenticated : statut de connexion
+   * - hasIcal : si l'utilisateur a configuré son calendrier
+   * - isAdmin : droits administrateur
+   * - userGroup : groupe d'appartenance
+   */
   const fetchAuthStatus = useCallback(async () => {
     setIsLoading(true);
     try {
+      // Récupération du statut d'authentification depuis le backend
       const userResponse = await axios.get(
         `${import.meta.env.VITE_BACKEND_URL}/api/me`,
         { withCredentials: true }
@@ -31,7 +53,7 @@ export const AuthProvider = ({ children }) => {
       const userData = userResponse.data.user; // userData peut être null si non authentifié
 
       if (userData && userData.userName) {
-        // Vérifier si userData et userName sont valides
+        // Utilisateur authentifié : mise à jour des états
         setUser(userData);
         setIsAuthenticated(true);
         // Assurer que hasIcal est un booléen, même si userData.hasIcal est undefined
@@ -41,6 +63,7 @@ export const AuthProvider = ({ children }) => {
         // Définir le groupe de l'utilisateur à partir des données utilisateur
         setUserGroup(userData.group || null);
       } else {
+        // Utilisateur non authentifié : reset des états
         setUser(null);
         setIsAuthenticated(false);
         setHasIcal(false);
@@ -48,27 +71,29 @@ export const AuthProvider = ({ children }) => {
         setUserGroup(null);
       }
     } catch (authError) {
-      // Cette section catch devrait maintenant être moins sollicitée pour les cas de non-authentification simple,
-      // car /api/me renverra 200 avec user: null.
-      // Elle reste utile pour les erreurs réseau ou autres erreurs serveur.
-      console.error("Erreur lors de fetchAuthStatus:", authError);
+      // Gestion des erreurs réseau ou serveur lors de la vérification d'authentification
+      console.error(
+        "Erreur lors de la vérification d'authentification:",
+        authError
+      );
       setUser(null);
       setHasIcal(false);
       setIsAuthenticated(false);
-      setIsAdmin(false); // Assurez-vous de réinitialiser isAdmin également en cas d'erreur
-      setUserGroup(null); // Réinitialiser le groupe en cas d'erreur
+      setIsAdmin(false);
+      setUserGroup(null);
     } finally {
       setIsLoading(false);
     }
   }, []);
-
   useEffect(() => {
+    // Vérification initiale du statut d'authentification au chargement de l'application
     fetchAuthStatus();
   }, [fetchAuthStatus]);
 
   const logout = async () => {
     setIsLoading(true);
     try {
+      // Appel API pour déconnexion côté serveur
       await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/auth/logout`,
         {},

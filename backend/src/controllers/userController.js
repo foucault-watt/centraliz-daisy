@@ -1,14 +1,47 @@
 import axios from "axios";
 import supabase from "../config/supabase.js";
+import logger from "../utils/logger.js";
+import {
+  syncSessionWithDatabase,
+  validateSessionUser,
+} from "../utils/sessionValidator.js";
 
-export const getMe = (req, res) => {
+export const getMe = async (req, res) => {
   if (!req.user) {
     // Si req.user n'est pas défini par le middleware, l'utilisateur n'est pas authentifié.
     return res.json({ user: null }); // Renvoyer null pour l'utilisateur
   }
-  // Assurez-vous que le middleware d'authentification charge bien le 'group' dans req.user
-  // Si ce n'est pas le cas, il faudra le récupérer de la base de données ici.
-  // Pour l'instant, on suppose qu'il est disponible.
+
+  // Validation supplémentaire de la session pour /api/me
+  // Car cette route est critique pour l'état d'authentification côté frontend
+  const isValidSession = await validateSessionUser(req.user);
+
+  if (!isValidSession) {
+    logger.warn(
+      "Session invalide détectée dans getMe, tentative de synchronisation",
+      {
+        userName: req.user.userName,
+      }
+    );
+
+    // Essayer de synchroniser avec la BDD
+    const syncedUser = await syncSessionWithDatabase(req.user);
+    if (syncedUser) {
+      // Mise à jour de la session avec les données synchronisées
+      req.session.user = syncedUser;
+      req.user = syncedUser;
+      logger.info("Session synchronisée dans getMe", {
+        userName: syncedUser.userName,
+      });
+    } else {
+      // Impossible de synchroniser, utilisateur non authentifié
+      logger.warn(
+        "Impossible de synchroniser dans getMe, utilisateur non authentifié"
+      );
+      return res.json({ user: null });
+    }
+  }
+
   const { userName, displayName, hasIcal, isAdmin, group } = req.user;
   res.json({ user: { userName, displayName, hasIcal, isAdmin, group } });
 };

@@ -26,6 +26,13 @@ app.use(compression());
 app.use(express.json());
 app.use(cookieParser());
 
+// Middleware de timeout pour éviter les requêtes qui traînent
+app.use((req, res, next) => {
+  req.setTimeout(30000); // 30 secondes
+  res.setTimeout(30000);
+  next();
+});
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "dev-secret",
@@ -47,6 +54,24 @@ app.use("/api/admin", adminRoutes); // Routes d'administration
 app.use("/api/admin/logs", logRoutes); // Routes pour les logs
 app.use("/api/notes", notesRoutes); // Routes pour les notes
 app.use("/api/sessions", sessionRoutes); // Routes pour la gestion des sessions
+
+// Gestionnaire d'erreur global
+app.use((err, req, res, next) => {
+  console.error("🚨 [Server] Erreur non gérée:", err);
+  logger.error("Erreur non gérée dans l'application", {
+    error: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method,
+  });
+
+  res.status(500).json({
+    success: false,
+    message: "Erreur interne du serveur",
+    error:
+      process.env.NODE_ENV === "development" ? err.message : "Erreur interne",
+  });
+});
 
 // Route de test pour crash du serveur (à utiliser avec précaution)
 app.use(`/api/${process.env.SECRET_API}/crash`, async (req, res) => {

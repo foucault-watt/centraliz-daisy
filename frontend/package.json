@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "set VITE_BACKEND_URL=http://localhost:3001&& vite",
+    "dev": "set VITE_BACKEND_URL=https://artcadia.rezoleo.fr&& vite",
+    "dev-local": "set VITE_BACKEND_URL=http://localhost:3001&& vite",
     "build": "set VITE_BACKEND_URL=https://artcadia.rezoleo.fr&& vite build",
     "lint": "eslint .",
     "preview": "vite preview"
